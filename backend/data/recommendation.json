@@ -1,0 +1,62 @@
+[
+    {
+        "id": 1,
+        "type": "Shelf Enhancement",
+        "priority": "HIGH",
+        "confidence": 94.5,
+        "improvement": 22.5,
+        "revenue_increase": 4200,
+        "description": "Increase stock of premium beverages on Shelf B. Customer count is high but products purchased conversion rate is only 45%. Rearrange lower shelves to place promo offers at eye level.",
+        "details": "Shelf B has 3.2 min average dwell time but products purchased count indicates high friction in checkout."
+    },
+    {
+        "id": 2,
+        "type": "Store Layout Optimization",
+        "priority": "HIGH",
+        "confidence": 89.0,
+        "improvement": 18.2,
+        "revenue_increase": 5800,
+        "description": "Create a clear secondary aisle path from Shelf A directly to the Checkout Counter. Floor plan shows 30% traffic bottlenecking at the central intersection during peak periods.",
+        "details": "Central corridor is experiencing high shopper density with speeds dropping to 0.4 m/s."
+    },
+    {
+        "id": 3,
+        "type": "Product Placement Recommendation",
+        "priority": "MEDIUM",
+        "confidence": 82.5,
+        "improvement": 12.0,
+        "revenue_increase": 2400,
+        "description": "Cross-merchandise top-performing items from Shelf A (Snacks) onto Shelf B (Beverages). Analyze showing customers visiting snacks have an 80% affinity to purchase soft drinks.",
+        "details": "Shopper flow path analyses show high path correlation: Entrance -> Shelf A -> Shelf B."
+    },
+    {
+        "id": 4,
+        "type": "Blind Spot Recommendation",
+        "priority": "MEDIUM",
+        "confidence": 88.0,
+        "improvement": 14.5,
+        "revenue_increase": 1950,
+        "description": "Relocate low-performing item categories from the blind spot behind Shelf C. The corner zone has a 2% traffic footprint. Add bright neon directional signage.",
+        "details": "Customer tracking path reports show zero entries into coordinate grid block (2,6) adjacent to Shelf C."
+    },
+    {
+        "id": 5,
+        "type": "Camera Placement Recommendation",
+        "priority": "LOW",
+        "confidence": 76.4,
+        "improvement": 8.0,
+        "revenue_increase": 800,
+        "description": "Reposition CAM-04 slightly 15 degrees right to cover the dark corner near Shelf C, reducing current blind spot footprint of 6.2% down to under 2%.",
+        "details": "Current angle suffers from structural pillar occlusion."
+    },
+    {
+        "id": 6,
+        "type": "Checkout Optimization",
+        "priority": "HIGH",
+        "confidence": 91.2,
+        "improvement": 25.0,
+        "revenue_increase": 6500,
+        "description": "Open checkout counter lane 2 dynamically between 4:00 PM and 6:00 PM. High traffic region counts indicate dwell times at checkout reach critical threshold of 6 minutes, causing checkout drops.",
+        "details": "Customer queue sizes at Checkout reach maximum of 5 shopper agents during evening periods."
+    }
+]

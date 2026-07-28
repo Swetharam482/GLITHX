@@ -1,0 +1,5 @@
+shelf_id,customer_count,avg_dwell_time,max_dwell_time,products_viewed,products_purchased,conversion_rate,engagement_score
+Shelf A (Snacks),0,0,0,0,0,0.0,0
+Shelf B (Beverages),0,0,0,0,0,0.0,0
+Shelf C (Produce),0,0,0,0,0,0.0,0
+Shelf D (Bakery),0,0,0,0,0,0.0,0

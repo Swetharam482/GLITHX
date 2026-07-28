@@ -1,0 +1,148 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>RetailVision AI - Enterprise BI Intelligence Platform</title>
+    <!-- Google Fonts: Inter & Poppins -->
+    <link rel="preconnect" href="https://fonts.googleapis.com">
+    <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+    <link href="https://fonts.googleapis.com/css2?family=Inter:wght@300;400;500;600;700;800&family=Poppins:wght@400;600;700&display=swap" rel="stylesheet">
+    <!-- Font Awesome Icons -->
+    <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css">
+    <!-- Chart.js CDN -->
+    <script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
+    <!-- Custom Theme Stylesheet -->
+    <link rel="stylesheet" href="css/styles.css">
+</head>
+<body>
+    <div class="app-container">
+        <!-- Sidebar Navigation -->
+        <aside class="sidebar">
+            <div class="sidebar-logo">
+                <div class="logo-icon">
+                    <i class="fa-solid fa-eye-low-vision neon-pulse"></i>
+                </div>
+                <div class="logo-text">
+                    <h1>RetailVision <span>AI</span></h1>
+                    <small>Enterprise Retail BI</small>
+                </div>
+            </div>
+            
+            <nav class="sidebar-nav">
+                <ul>
+                    <li class="nav-item active" data-page="dashboard" id="nav-dashboard">
+                        <a href="#"><i class="fa-solid fa-chart-line"></i> <span>Dashboard</span></a>
+                    </li>
+                    <li class="nav-item" data-page="detection" id="nav-detection">
+                        <a href="#"><i class="fa-solid fa-person-rays"></i> <span>Person Detection</span></a>
+                    </li>
+                    <li class="nav-item" data-page="tracking" id="nav-tracking">
+                        <a href="#"><i class="fa-solid fa-user-tag"></i> <span>Object Tracking</span></a>
+                    </li>
+                    <li class="nav-item" data-page="heatmap" id="nav-heatmap">
+                        <a href="#"><i class="fa-solid fa-fire"></i> <span>Heatmap Analytics</span></a>
+                    </li>
+                    <li class="nav-item" data-page="suggestions" id="nav-suggestions">
+                        <a href="#"><i class="fa-solid fa-wand-magic-sparkles"></i> <span>AI Suggestions</span></a>
+                    </li>
+                    <li class="nav-item" data-page="settings" id="nav-settings">
+                        <a href="#"><i class="fa-solid fa-sliders"></i> <span>Settings</span></a>
+                    </li>
+                </ul>
+            </nav>
+
+            <div class="sidebar-footer">
+                <div class="user-profile">
+                    <div class="avatar"><i class="fa-solid fa-user-tie"></i></div>
+                    <div class="profile-info">
+                        <strong>HQ Operations</strong>
+                        <small>Store Manager</small>
+                    </div>
+                </div>
+            </div>
+        </aside>
+
+        <!-- Main Display Content Area -->
+        <main class="main-content">
+            <!-- App Header -->
+            <header class="app-header">
+                <div class="header-title">
+                    <h2>RetailVision AI Dashboard</h2>
+                    <p class="subtitle">AI Powered Retail Analytics Dashboard</p>
+                </div>
+                <div class="header-status-panel">
+                    <div class="status-pill">
+                        <span class="status-dot green animate-blink"></span>
+                        <span class="status-label" id="status-label">Live Status: Connected</span>
+                    </div>
+                    <div class="meta-item">
+                        <i class="fa-solid fa-store text-cyan"></i>
+                        <span id="store-id">Store: Store 03</span>
+                    </div>
+                    <div class="meta-item">
+                        <i class="fa-solid fa-video text-blue"></i>
+                        <span id="cams-count">Cameras: 4 Connected</span>
+                    </div>
+                    <div class="meta-item">
+                        <i class="fa-solid fa-clock text-slate"></i>
+                        <span id="live-clock">--:--:--</span>
+                    </div>
+                    <div class="meta-item text-muted">
+                        <span>Updated: <span id="last-updated">2s ago</span></span>
+                    </div>
+                </div>
+            </header>
+
+            <!-- Dynamic Subpage Container -->
+            <section class="content-body" id="page-content">
+                <!-- Subpages will mount here dynamically -->
+                <div class="loading-state">
+                    <i class="fa-solid fa-circle-notch fa-spin text-cyan fa-2xl"></i>
+                    <p>Loading Retail Analytics Control Room...</p>
+                </div>
+            </section>
+        </main>
+    </div>
+
+    <!-- Drill-Down Details Panel (Modal Overlay) -->
+    <div id="details-modal" class="modal-overlay">
+        <div class="modal-content glass-card">
+            <header class="modal-header">
+                <div class="modal-title-group">
+                    <span class="modal-badge" id="modal-region-badge">HIGH TRAFFIC</span>
+                    <h3 id="modal-region-title">High Traffic Region Analysis</h3>
+                </div>
+                <button class="modal-close-btn" id="close-modal-btn"><i class="fa-solid fa-xmark"></i></button>
+            </header>
+            <div class="modal-body">
+                <!-- Swapped dynamic detailed view contents -->
+            </div>
+        </div>
+    </div>
+
+    <!-- Core SPA JavaScript Files -->
+    <script src="js/api.js"></script>
+    <script src="js/charts.js"></script>
+    <script src="js/pages/dashboard.js"></script>
+    <script src="js/pages/detection.js"></script>
+    <script src="js/pages/tracking.js"></script>
+    <script src="js/pages/heatmap.js"></script>
+    <script src="js/pages/suggestions.js"></script>
+    <script src="js/pages/settings.js"></script>
+    <script src="js/pages/details.js"></script>
+    <script src="js/app.js"></script>
+</body>
+</html>
+<div class="upload-section">
+    <h2>Upload CCTV Video</h2>
+
+    <input
+        type="file"
+        id="videoFile"
+        accept=".mp4,.avi,.mov">
+
+    <button onclick="uploadVideo()">
+        Upload & Analyze
+    </button>
+</div>

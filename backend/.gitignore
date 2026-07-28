@@ -1,0 +1,22 @@
+# Python
+__pycache__/
+*.pyc
+*.pyo
+
+# Virtual Environment
+.venv/
+venv/
+
+# VS Code
+.vscode/
+
+# Python cache
+*.log
+
+# Generated files (optional)
+backend/static/tracked_video.mp4
+backend/static/uploaded_video.mp4
+
+# OS
+.DS_Store
+Thumbs.db
