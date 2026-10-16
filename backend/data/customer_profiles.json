@@ -1,0 +1,124 @@
+{
+    "Customer 1": {
+        "customer_id": "Customer 1",
+        "entry_video_sec": 0.0,
+        "exit_video_sec": 4.8,
+        "duration_seconds": 4.8,
+        "visited_zones": [
+            "Central Walking Aisle",
+            "Back Endcap"
+        ],
+        "current_zone": "Back Endcap",
+        "status": "Exited",
+        "trajectory": [
+            {
+                "x": 642,
+                "y": 250,
+                "sec": 0.0
+            },
+            {
+                "x": 656,
+                "y": 219,
+                "sec": 0.3
+            },
+            {
+                "x": 653,
+                "y": 207,
+                "sec": 0.7
+            },
+            {
+                "x": 646,
+                "y": 206,
+                "sec": 1.0
+            },
+            {
+                "x": 647,
+                "y": 195,
+                "sec": 1.3
+            },
+            {
+                "x": 642,
+                "y": 172,
+                "sec": 1.7
+            },
+            {
+                "x": 645,
+                "y": 171,
+                "sec": 2.0
+            },
+            {
+                "x": 649,
+                "y": 167,
+                "sec": 2.3
+            },
+            {
+                "x": 654,
+                "y": 141,
+                "sec": 2.8
+            },
+            {
+                "x": 650,
+                "y": 133,
+                "sec": 3.2
+            },
+            {
+                "x": 645,
+                "y": 132,
+                "sec": 3.6
+            },
+            {
+                "x": 635,
+                "y": 120,
+                "sec": 3.9
+            },
+            {
+                "x": 622,
+                "y": 119,
+                "sec": 4.2
+            },
+            {
+                "x": 618,
+                "y": 113,
+                "sec": 4.6
+            }
+        ]
+    },
+    "Customer 2": {
+        "customer_id": "Customer 2",
+        "entry_video_sec": 8.8,
+        "exit_video_sec": 10.2,
+        "duration_seconds": 1.5,
+        "visited_zones": [
+            "Central Walking Aisle"
+        ],
+        "current_zone": "Central Walking Aisle",
+        "status": "Inside",
+        "trajectory": [
+            {
+                "x": 640,
+                "y": 139,
+                "sec": 8.8
+            },
+            {
+                "x": 647,
+                "y": 160,
+                "sec": 9.1
+            },
+            {
+                "x": 650,
+                "y": 165,
+                "sec": 9.4
+            },
+            {
+                "x": 657,
+                "y": 169,
+                "sec": 9.8
+            },
+            {
+                "x": 656,
+                "y": 186,
+                "sec": 10.1
+            }
+        ]
+    }
+}

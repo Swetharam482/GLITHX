@@ -1,2 +1,4 @@
-customer_id,zone,dwell_time_seconds,interaction_type
-101,Shelf A (Snacks),15.4,Browsing
+zone,dwell_time_seconds,interaction_type
+Central Walking Aisle,4.0,Passing Walkby
+Central Walking Aisle,1.6,Passing Walkby
+Back Endcap,6.3,Active Browsing

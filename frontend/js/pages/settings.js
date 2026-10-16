@@ -1,112 +1,147 @@
-/* RetailVision AI - Configuration Settings Page View */
+/* RetailVision AI - Application & Pipeline Settings Module */
 
 const SettingsPage = {
     render() {
         return `
-            <div class="settings-wrapper glass-card" style="padding:30px;">
-                <div style="border-bottom:1px solid var(--border-card); padding-bottom:15px; margin-bottom:25px;">
-                    <h3 style="font-size:18px; font-family:var(--font-heading); color:#fff;"><i class="fa-solid fa-sliders text-cyan"></i> Platform Configurations</h3>
-                    <p style="font-size:12px; color:var(--slate);">Configure YOLOv8 AI models, ByteTrack sensitivities, camera triggers, and store layouts.</p>
+            <div class="glass-card" style="padding: 18px 24px; margin-bottom: 24px;">
+                <h4 style="margin: 0; font-size: 15px; font-weight: 700; color: var(--text-primary); display: flex; align-items: center; gap: 8px;">
+                    <i class="fa-solid fa-sliders text-orange"></i> Computer Vision & System Settings
+                </h4>
+                <small style="color: var(--text-muted);">
+                    Adjust detection confidence, multi-object tracking stride, and retail store camera metadata.
+                </small>
+            </div>
+
+            <div style="display: grid; grid-template-columns: 1fr 1fr; gap: 24px;">
+                <!-- Pipeline Configurations -->
+                <div class="glass-card">
+                    <div class="card-header">
+                        <h3><i class="fa-solid fa-microchip text-orange"></i> AI Detection & Tracking Parameters</h3>
+                    </div>
+                    <div class="card-body">
+                        <form id="settings-form">
+                            <div class="form-group">
+                                <label for="settings-model">Person Detection Model</label>
+                                <select class="form-control" id="settings-model">
+                                    <option value="yolov8n.pt" selected>Ultralytics YOLOv8n (Pretrained Nano CPU - Fast)</option>
+                                    <option value="yolo26n.pt">Ultralytics YOLO26n (Local Weights)</option>
+                                </select>
+                            </div>
+
+                            <div class="form-group">
+                                <label for="settings-conf">Detection Confidence Threshold: <strong id="conf-val-label" style="color: var(--primary-orange);">25%</strong></label>
+                                <input type="range" class="form-control" id="settings-conf" min="10" max="80" value="25" style="padding: 0;">
+                            </div>
+
+                            <div class="form-group">
+                                <label for="settings-stride">Video Processing Frame Stride (Downsampling factor)</label>
+                                <select class="form-control" id="settings-stride">
+                                    <option value="1">1 (Every frame - Maximum accuracy, slower)</option>
+                                    <option value="2" selected>2 (Sample every 2nd frame - Recommended)</option>
+                                    <option value="3">3 (Sample every 3rd frame - Ultra fast)</option>
+                                </select>
+                            </div>
+
+                            <div class="form-group">
+                                <label for="settings-device">Inference Hardware Acceleration</label>
+                                <input type="text" class="form-control" value="CPU (Intel / AMD AVX2 Optimized)" disabled style="background: #F8FAFC;">
+                            </div>
+
+                            <button type="submit" class="btn-primary" style="margin-top: 10px;">
+                                <i class="fa-solid fa-floppy-disk"></i> Save Pipeline Settings
+                            </button>
+                        </form>
+                    </div>
                 </div>
 
-                <form id="settings-form" style="display:flex; flex-direction:column; gap:20px;">
-                    <!-- Row 1: AI Model Configuration -->
-                    <div class="form-row">
-                        <div class="form-group">
-                            <label for="setting-model-size">AI Detection Model Size</label>
-                            <select class="form-control" id="setting-model-size">
-                                <option value="yolov8n">YOLOv8 Nano (Default - 6.2MB, Fast CPU)</option>
-                                <option value="yolov8s">YOLOv8 Small (22.5MB, Recommended GPU)</option>
-                                <option value="yolov8m">YOLOv8 Medium (52.0MB, Advanced Accuracy)</option>
-                            </select>
-                        </div>
-                        <div class="form-group">
-                            <label for="setting-confidence">Detection Confidence Threshold</label>
-                            <div style="display:flex; align-items:center; gap:12px;">
-                                <input type="range" class="form-control" style="flex:1; padding:0; height:8px;" id="setting-confidence" min="10" max="95" value="50">
-                                <span id="conf-val" style="font-size:13px; font-weight:700; color:var(--cyan); width:35px;">0.50</span>
+                <!-- Store & Camera Information -->
+                <div class="glass-card">
+                    <div class="card-header">
+                        <h3><i class="fa-solid fa-store text-orange"></i> Store & Surveillance Metadata</h3>
+                    </div>
+                    <div class="card-body">
+                        <form id="store-meta-form">
+                            <div class="form-group">
+                                <label for="settings-store-name">Retail Store Facility Name</label>
+                                <input type="text" class="form-control" id="settings-store-name" value="Rehana Retail Store - Central CCTV View">
                             </div>
-                        </div>
-                    </div>
 
-                    <!-- Row 2: Tracking Configuration -->
-                    <div class="form-row">
-                        <div class="form-group">
-                            <label for="setting-track-fps">ByteTrack Processing FPS Target</label>
-                            <select class="form-control" id="setting-track-fps">
-                                <option value="15">15 FPS (Resource Optimized)</option>
-                                <option value="30" selected>30 FPS (Fluid Visual Tracking)</option>
-                                <option value="60">60 FPS (Ultra Performance)</option>
-                            </select>
-                        </div>
-                        <div class="form-group">
-                            <label for="setting-dwell-threshold">Dwell Time Event Threshold</label>
-                            <select class="form-control" id="setting-dwell-threshold">
-                                <option value="5">5 Seconds (Quick Browse)</option>
-                                <option value="10" selected>10 Seconds (Standard Browse)</option>
-                                <option value="30">30 Seconds (Engaged Shopping)</option>
-                            </select>
-                        </div>
-                    </div>
+                            <div class="form-group">
+                                <label for="settings-camera-id">Monitored Camera Identification</label>
+                                <input type="text" class="form-control" id="settings-camera-id" value="CAM-01 (Ceiling High-Angle)">
+                            </div>
 
-                    <!-- Layout and Mapping Configuration -->
-                    <div class="form-group">
-                        <label>Active Cameras to Monitor</label>
-                        <div style="display:flex; flex-direction:column; gap:10px; margin-top:6px; background:rgba(0,0,0,0.15); padding:15px; border-radius:8px; border:1px solid var(--border-card);">
-                            <label style="display:flex; align-items:center; gap:10px; font-size:13px; cursor:pointer;">
-                                <input type="checkbox" checked style="accent-color:var(--cyan);"> CAM-01: Rear Shelf C Produce Section
-                            </label>
-                            <label style="display:flex; align-items:center; gap:10px; font-size:13px; cursor:pointer;">
-                                <input type="checkbox" checked style="accent-color:var(--cyan);"> CAM-02: Shelf A Snacks / Shelf D Bakery Corridor
-                            </label>
-                            <label style="display:flex; align-items:center; gap:10px; font-size:13px; cursor:pointer;">
-                                <input type="checkbox" checked style="accent-color:var(--cyan);"> CAM-03: Central Aisle / Shelf B Beverages (Main Core)
-                            </label>
-                            <label style="display:flex; align-items:center; gap:10px; font-size:13px; cursor:pointer;">
-                                <input type="checkbox" checked style="accent-color:var(--cyan);"> CAM-04: Checkout lanes & Cash Registers
-                            </label>
-                        </div>
-                    </div>
+                            <div class="form-group">
+                                <label>Ground Plane Coordinate Resolution</label>
+                                <input type="text" class="form-control" value="1280 x 720 Standardized Aspect" disabled style="background: #F8FAFC;">
+                            </div>
 
-                    <!-- Actions -->
-                    <div style="display:flex; justify-content:flex-end; gap:12px; border-top:1px solid var(--border-card); padding-top:20px; margin-top:10px;">
-                        <button type="button" class="btn-secondary" id="btn-reset-settings">Reset Defaults</button>
-                        <button type="submit" class="btn-primary">Save Settings Configuration</button>
+                            <div style="background: var(--orange-light); border: 1px solid var(--orange-border); border-radius: var(--radius-md); padding: 14px; font-size: 12.5px; color: var(--dark-orange); margin-top: 18px;">
+                                <i class="fa-solid fa-circle-check" style="margin-right: 6px;"></i>
+                                All metadata adjustments are instantly reflected across header tags and executive exports.
+                            </div>
+                        </form>
                     </div>
-                </form>
+                </div>
             </div>
         `;
     },
 
     async init() {
-        this.bindEvents();
-    },
+        const settings = await ApiService.getSettings();
+        if (settings) {
+            const modelEl = document.getElementById('settings-model');
+            if (modelEl && settings.model_name) modelEl.value = settings.model_name;
 
-    bindEvents() {
-        const confSlider = document.getElementById('setting-confidence');
-        const confVal = document.getElementById('conf-val');
-        
-        confSlider.addEventListener('input', (e) => {
-            const v = (e.target.value / 100).toFixed(2);
-            confVal.textContent = v;
-        });
+            const confEl = document.getElementById('settings-conf');
+            const confLabel = document.getElementById('conf-val-label');
+            if (confEl && settings.confidence_threshold) {
+                confEl.value = Math.round(settings.confidence_threshold * 100);
+                if (confLabel) confLabel.textContent = `${confEl.value}%`;
+            }
+
+            const strideEl = document.getElementById('settings-stride');
+            if (strideEl && settings.frame_stride) strideEl.value = settings.frame_stride;
+
+            const storeEl = document.getElementById('settings-store-name');
+            if (storeEl && settings.store_name) storeEl.value = settings.store_name;
+
+            const camEl = document.getElementById('settings-camera-id');
+            if (camEl && settings.camera_id) camEl.value = settings.camera_id;
+        }
+
+        const confEl = document.getElementById('settings-conf');
+        const confLabel = document.getElementById('conf-val-label');
+        if (confEl && confLabel) {
+            confEl.addEventListener('input', () => {
+                confLabel.textContent = `${confEl.value}%`;
+            });
+        }
 
         const form = document.getElementById('settings-form');
-        form.addEventListener('submit', (e) => {
-            e.preventDefault();
-            alert('Configurations saved successfully! Backend service re-indexing filters.');
-        });
+        if (form) {
+            form.addEventListener('submit', async (e) => {
+                e.preventDefault();
+                const model_name = document.getElementById('settings-model').value;
+                const confidence_threshold = parseFloat(document.getElementById('settings-conf').value) / 100.0;
+                const frame_stride = parseInt(document.getElementById('settings-stride').value);
+                const store_name = document.getElementById('settings-store-name').value;
+                const camera_id = document.getElementById('settings-camera-id').value;
 
-        const resetBtn = document.getElementById('btn-reset-settings');
-        resetBtn.addEventListener('click', () => {
-            confSlider.value = 50;
-            confVal.textContent = '0.50';
-            document.getElementById('setting-model-size').value = 'yolov8n';
-            document.getElementById('setting-track-fps').value = '30';
-            document.getElementById('setting-dwell-threshold').value = '10';
-            alert('Settings restored to factory defaults.');
-        });
-    },
+                const res = await ApiService.updateSettings({
+                    model_name,
+                    confidence_threshold,
+                    frame_stride,
+                    store_name,
+                    camera_id
+                });
 
-    destroy() {}
+                if (res && res.status === 'success') {
+                    alert('Settings updated successfully!');
+                } else {
+                    alert(res.message || 'Error saving settings.');
+                }
+            });
+        }
+    }
 };

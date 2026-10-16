@@ -1,0 +1,37 @@
+{
+    "Shelf A (Groceries & Oils)": {
+        "x1": 50,
+        "y1": 100,
+        "x2": 430,
+        "y2": 680,
+        "color": "#F97316"
+    },
+    "Shelf B (Cleaning & Household)": {
+        "x1": 680,
+        "y1": 100,
+        "x2": 1200,
+        "y2": 680,
+        "color": "#3B82F6"
+    },
+    "Central Walking Aisle": {
+        "x1": 430,
+        "y1": 120,
+        "x2": 680,
+        "y2": 680,
+        "color": "#10B981"
+    },
+    "Back Endcap": {
+        "x1": 400,
+        "y1": 20,
+        "x2": 700,
+        "y2": 120,
+        "color": "#8B5CF6"
+    },
+    "Front Checkout Approach": {
+        "x1": 200,
+        "y1": 600,
+        "x2": 800,
+        "y2": 720,
+        "color": "#EC4899"
+    }
+}

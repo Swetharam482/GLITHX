@@ -1,85 +1,91 @@
-/* RetailVision AI - Multiple Object Tracking Page View */
+/* RetailVision AI - Customer Tracking Page Module */
 
 const TrackingPage = {
-    pollingInterval: null,
-    isStreaming: false,
-
     render() {
         return `
-            <div class="video-analytics-wrapper">
-                <!-- Video Player Card -->
-                <div class="glass-card player-card">
-                    <div class="card-header" style="padding:0 0 15px 0; border-bottom:1px solid var(--border-card)">
-                        <h3 style="font-size:16px"><i class="fa-solid fa-user-tag text-blue"></i> ByteTrack Multiple Object Tracking</h3>
+            <div style="display: grid; grid-template-columns: 1.35fr 1fr; gap: 24px; margin-bottom: 24px;">
+                <!-- Tracking Visual Stream -->
+                <div class="glass-card">
+                    <div class="card-header">
+                        <h3><i class="fa-solid fa-user-tag text-orange"></i> Multi-Object Tracking (ByteTrack)</h3>
+                        <span class="badge badge-orange">Continuous Identity Trails</span>
                     </div>
-                    
-                    <div class="video-player-container" id="tracking-video-container">
-                        <span class="live-badge" id="tracking-live-badge" style="display:none; background:rgba(59,130,246,0.85)">
-                            <span class="status-dot green animate-blink" style="background:#fff"></span>TRACKING ACTIVE
-                        </span>
-                        <!-- Default placeholder -->
-                        <img id="tracking-feed" src="http://127.0.0.1:5000/static/store_heatmap.png" style="opacity: 0.45; object-fit: cover;" alt="Click Start Tracking to begin stream">
-                    </div>
-
-                    <!-- Video Controls -->
-                    <div class="video-controls">
-                        <button class="btn-primary" style="background:var(--blue); color:#fff;" id="btn-start-track"><i class="fa-solid fa-play"></i> Start Tracking</button>
-                        <button class="btn-danger" id="btn-stop-track" disabled><i class="fa-solid fa-stop"></i> Stop Tracking</button>
+                    <div class="card-body" style="padding: 16px;">
+                        <div style="border-radius: var(--radius-md); overflow: hidden; background: #000; aspect-ratio: 16/9; display: flex; align-items: center; justify-content: center;">
+                            <img src="${API_BASE_URL}/video_feed?mode=tracking" alt="Customer Tracking Stream" style="width: 100%; height: 100%; object-fit: contain;">
+                        </div>
+                        <div style="display: flex; justify-content: space-between; align-items: center; margin-top: 12px; font-size: 12px; color: var(--text-muted);">
+                            <span>Tracker Algorithm: <strong>ByteTrack (Kalman Filter + IoU Association)</strong></span>
+                            <span>Persistence: <strong>Tracklet Smoothing</strong></span>
+                        </div>
                     </div>
                 </div>
 
-                <!-- Live Tracking Statistics Side Panel -->
-                <div class="stats-panel">
-                    <div class="glass-card" style="padding:20px;">
-                        <h4 style="font-size:14px; font-family:var(--font-heading); color:var(--cyan); margin-bottom:15px; border-bottom:1px solid var(--border-card); padding-bottom:8px;">
-                            Tracking Diagnostics
-                        </h4>
-                        <div style="display:flex; flex-direction:column; gap:14px;">
-                            <div style="display:flex; justify-content:space-between; font-size:13px;">
-                                <span style="color:var(--slate);">Active Customers</span>
-                                <span style="font-weight:700; color:#ffffff;" id="track-active-count">0</span>
+                <!-- Tracking Telemetry -->
+                <div style="display: flex; flex-direction: column; gap: 18px;">
+                    <div class="glass-card">
+                        <div class="card-header">
+                            <h3><i class="fa-solid fa-route text-orange"></i> Tracking Telemetry Summary</h3>
+                        </div>
+                        <div class="card-body" style="padding: 16px 20px;">
+                            <div style="display: flex; justify-content: space-between; padding: 9px 0; border-bottom: 1px solid var(--border-color); font-size: 13px;">
+                                <span style="color: var(--text-muted);">Observed Tracking Identifiers</span>
+                                <strong id="trk-total-count" style="color: var(--text-primary); font-size: 16px;">0</strong>
                             </div>
-                            <div style="display:flex; justify-content:space-between; font-size:13px;">
-                                <span style="color:var(--slate);">Total Customers</span>
-                                <span style="font-weight:700; color:#ffffff;" id="track-total-count">0</span>
+                            <div style="display: flex; justify-content: space-between; padding: 9px 0; border-bottom: 1px solid var(--border-color); font-size: 13px;">
+                                <span style="color: var(--text-muted);">Average Walking Speed</span>
+                                <strong id="trk-avg-speed" style="color: var(--primary-orange); font-size: 15px;">1.1 m/s</strong>
                             </div>
-                            <div style="display:flex; justify-content:space-between; font-size:13px;">
-                                <span style="color:var(--slate);">Re-ID Accuracy</span>
-                                <span style="font-weight:700; color:var(--green);" id="track-accuracy">98.2%</span>
+                            <div style="display: flex; justify-content: space-between; padding: 9px 0; font-size: 13px;">
+                                <span style="color: var(--text-muted);">Identity Re-ID Method</span>
+                                <strong style="color: var(--text-primary);">Spatial-Temporal Kalman State</strong>
                             </div>
-                            <div style="display:flex; justify-content:space-between; font-size:13px;">
-                                <span style="color:var(--slate);">Avg Tracking Dwell</span>
-                                <span style="font-weight:700; color:var(--cyan);" id="track-dwell">12.8 min</span>
-                            </div>
-                            <div style="display:flex; justify-content:space-between; font-size:13px;">
-                                <span style="color:var(--slate);">Tracking Frame Rate</span>
-                                <span style="font-weight:700; color:#ffffff;" id="track-fps">30.0 FPS</span>
-                            </div>
+                        </div>
+                    </div>
+
+                    <div class="glass-card" style="flex: 1;">
+                        <div class="card-header">
+                            <h3><i class="fa-solid fa-triangle-exclamation text-orange"></i> Identity Disclaimer</h3>
+                        </div>
+                        <div class="card-body" style="font-size: 12.5px; color: var(--text-secondary); line-height: 1.5;">
+                            <p style="margin-bottom: 10px;">
+                                <strong>Technical Measurement Note:</strong> Tracked IDs represent observed tracking identities maintained by ByteTrack while visual continuity is established.
+                            </p>
+                            <p>
+                                Prolonged occlusion or camera departure will naturally assign a new tracking ID upon re-entry. No permanent biometrics or facial features are captured.
+                            </p>
                         </div>
                     </div>
                 </div>
             </div>
 
-            <!-- Shopper Trajectory & Flow History Table -->
-            <div class="glass-card tracking-table-card">
+            <!-- Customer Trajectories Table -->
+            <div class="glass-card">
                 <div class="card-header">
-                    <h3><i class="fa-solid fa-route text-purple"></i> Customer Movement Flow Trajectories</h3>
+                    <h3><i class="fa-solid fa-users-viewfinder text-orange"></i> Tracked Customer Trajectory Records</h3>
+                    <a href="${API_BASE_URL}/report?type=tracking_csv" class="btn-outline-orange" download>
+                        <i class="fa-solid fa-download"></i> Export Trajectory CSV
+                    </a>
                 </div>
-                <div class="card-body">
-                    <div class="tracking-table-container">
-                        <table class="tracking-table">
+                <div class="card-body" style="padding: 0;">
+                    <div class="table-responsive">
+                        <table class="rv-table">
                             <thead>
                                 <tr>
-                                    <th>Customer ID</th>
-                                    <th>Trajectory Path Visualization</th>
-                                    <th>Walking Speed</th>
-                                    <th>Entry Time</th>
-                                    <th>Total Dwell</th>
+                                    <th>Shopper ID</th>
+                                    <th>Observed Trajectory Path</th>
+                                    <th>Tracked Duration</th>
+                                    <th>Entry Timestamp</th>
+                                    <th>Exit Timestamp</th>
                                     <th>Status</th>
                                 </tr>
                             </thead>
-                            <tbody id="tracking-table-rows">
-                                <!-- Populated dynamically -->
+                            <tbody id="tracking-records-tbody">
+                                <tr>
+                                    <td colspan="6" style="text-align: center; color: var(--text-muted); padding: 24px;">
+                                        Loading customer trajectory records...
+                                    </td>
+                                </tr>
                             </tbody>
                         </table>
                     </div>
@@ -89,98 +95,35 @@ const TrackingPage = {
     },
 
     async init() {
-        this.bindEvents();
-        this.startPolling();
-    },
+        const data = await ApiService.getTrackingData();
+        if (data) {
+            const countEl = document.getElementById('trk-total-count');
+            if (countEl) countEl.textContent = data.total_unique_tracked || 0;
 
-    bindEvents() {
-        const startBtn = document.getElementById('btn-start-track');
-        const stopBtn = document.getElementById('btn-stop-track');
-        const feedImg = document.getElementById('tracking-feed');
-        const liveBadge = document.getElementById('tracking-live-badge');
-
-        startBtn.addEventListener('click', async () => {
-            const res = await ApiService.startTracking();
-            if (res && !res.error) {
-                this.isStreaming = true;
-                feedImg.src = ApiService.getVideoFeedUrl('tracking');
-                feedImg.style.opacity = "1";
-                liveBadge.style.display = "flex";
-                startBtn.disabled = true;
-                stopBtn.disabled = false;
-            }
-        });
-
-        stopBtn.addEventListener('click', async () => {
-            const res = await ApiService.stopTracking();
-            if (res && !res.error) {
-                this.isStreaming = false;
-                feedImg.src = "http://127.0.0.1:5000/static/store_heatmap.png";
-                feedImg.style.opacity = "0.45";
-                liveBadge.style.display = "none";
-                startBtn.disabled = false;
-                stopBtn.disabled = true;
-            }
-        });
-    },
-
-    startPolling() {
-        const poll = async () => {
-            const data = await ApiService.getTrackingData();
-            if (data) {
-                document.getElementById('track-active-count').textContent = data.active_tracked_customers;
-                document.getElementById('track-total-count').textContent = data.total_tracked_customers;
-                document.getElementById('track-accuracy').textContent = data.reidentification_accuracy;
-                document.getElementById('track-dwell').textContent = data.average_tracking_time;
-                document.getElementById('track-fps').textContent = `${data.tracking_fps.toFixed(1)} FPS`;
-
-                // Update Trajectories table
-                const tableBody = document.getElementById('tracking-table-rows');
-                if (tableBody) {
-                    tableBody.innerHTML = data.customer_flow_history.map(row => {
-                        // Split path to draw pretty arrows and boxes
-                        const nodes = row.trajectory.split(' -> ');
-                        const pathHtml = nodes.map((n, i) => {
-                            let color = 'var(--slate)';
-                            if (n.includes('Shelf A')) color = 'var(--purple)';
-                            else if (n.includes('Shelf B')) color = 'var(--blue)';
-                            else if (n.includes('Shelf C')) color = 'var(--cyan)';
-                            else if (n.includes('Shelf D')) color = 'var(--yellow)';
-                            else if (n.includes('Checkout')) color = 'var(--red)';
-                            else if (n.includes('Entrance') || n.includes('Exit')) color = 'var(--green)';
-
-                            const nodeSpan = `<span class="badge-zone" style="background:${color}20; color:${color}; border:1px solid ${color}40">${n}</span>`;
-                            const arrow = i < nodes.length - 1 ? ' <i class="fa-solid fa-chevron-right" style="color:var(--slate); font-size:10px; margin:0 4px"></i> ' : '';
-                            return nodeSpan + arrow;
-                        }).join('');
-
-                        return `
-                            <tr>
-                                <td style="font-weight:700; color:var(--cyan)">#${row.customer_id}</td>
-                                <td>${pathHtml}</td>
-                                <td><i class="fa-solid fa-gauge-high text-slate"></i> ${row.walking_speed}</td>
-                                <td>${row.entry_time}</td>
-                                <td>${row.dwell_time}</td>
-                                <td>
-                                    <span class="badge-zone" style="background:rgba(16,185,129,0.15); color:var(--green); border:1px solid rgba(16,185,129,0.25)">
-                                        <i class="fa-solid fa-check"></i> ${row.exit_status}
-                                    </span>
-                                </td>
-                            </tr>
-                        `;
-                    }).join('');
+            const tbody = document.getElementById('tracking-records-tbody');
+            if (tbody) {
+                const history = data.customer_flow_history || [];
+                if (history.length > 0) {
+                    tbody.innerHTML = history.map(item => `
+                        <tr>
+                            <td><strong style="color: var(--primary-orange);">Shopper #${item.customer_id}</strong></td>
+                            <td style="font-weight: 500;">${item.trajectory}</td>
+                            <td>${item.duration_sec}s</td>
+                            <td>${item.entry_sec}s</td>
+                            <td>${item.exit_sec}s</td>
+                            <td><span class="badge ${item.status === 'Inside' ? 'badge-green' : 'badge-orange'}">${item.status}</span></td>
+                        </tr>
+                    `).join('');
+                } else {
+                    tbody.innerHTML = `
+                        <tr>
+                            <td colspan="6" style="text-align: center; color: var(--text-muted); padding: 24px;">
+                                No tracked shoppers in active video clip.
+                            </td>
+                        </tr>
+                    `;
                 }
             }
-        };
-
-        poll();
-        this.pollingInterval = setInterval(poll, 2000);
-    },
-
-    destroy() {
-        if (this.pollingInterval) {
-            clearInterval(this.pollingInterval);
-            this.pollingInterval = null;
         }
     }
 };

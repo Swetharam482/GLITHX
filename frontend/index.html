@@ -3,52 +3,74 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>RetailVision AI - Enterprise BI Intelligence Platform</title>
+    <title>RetailVision AI — Real-Time Retail Blind Spot Discovery & CCTV Analytics</title>
     <!-- Google Fonts: Inter & Poppins -->
     <link rel="preconnect" href="https://fonts.googleapis.com">
     <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
-    <link href="https://fonts.googleapis.com/css2?family=Inter:wght@300;400;500;600;700;800&family=Poppins:wght@400;600;700&display=swap" rel="stylesheet">
-    <!-- Font Awesome Icons -->
+    <link href="https://fonts.googleapis.com/css2?family=Inter:wght@300;400;500;600;700;800&family=Poppins:wght@500;600;700&display=swap" rel="stylesheet">
+    <!-- Font Awesome 6 Icons -->
     <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css">
     <!-- Chart.js CDN -->
     <script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
-    <!-- Custom Theme Stylesheet -->
+    <!-- White & Orange Theme Stylesheet -->
     <link rel="stylesheet" href="css/styles.css">
 </head>
 <body>
-    <div class="app-container">
-        <!-- Sidebar Navigation -->
+    <!-- Login Screen Overlay -->
+    <div id="login-overlay" class="login-overlay">
+        <div class="login-card">
+            <div class="login-logo">
+                <i class="fa-solid fa-eye text-orange"></i>
+                <h2>RetailVision <span>AI</span></h2>
+                <p>Enterprise CCTV Spatial Analytics Platform</p>
+            </div>
+            
+            <div style="margin-bottom: 14px;">
+                <label style="font-size: 12px; font-weight: 600; color: var(--text-muted); text-transform: uppercase;">Quick Role Switcher</label>
+                <div class="role-quick-select">
+                    <button type="button" class="role-pill-btn active" data-username="admin">Super Admin / Owner</button>
+                    <button type="button" class="role-pill-btn" data-username="store_manager">Store Manager</button>
+                    <button type="button" class="role-pill-btn" data-username="marketing_manager">Marketing Manager</button>
+                    <button type="button" class="role-pill-btn" data-username="operations_manager">Operations Manager</button>
+                </div>
+            </div>
+
+            <form id="login-form">
+                <div class="form-group">
+                    <label for="login-username">Account Username</label>
+                    <input type="text" class="form-control" id="login-username" value="admin" required>
+                </div>
+                <div class="form-group">
+                    <label for="login-password">Access Password</label>
+                    <input type="password" class="form-control" id="login-password" value="password" required>
+                </div>
+                <button type="submit" class="btn-primary login-btn">
+                    <i class="fa-solid fa-right-to-bracket"></i> Enter Intelligence Portal
+                </button>
+            </form>
+            <div style="margin-top: 15px; text-align: center; font-size: 11.5px; color: var(--text-muted);">
+                <span>Local test credentials: password is <strong>password</strong></span>
+            </div>
+        </div>
+    </div>
+
+    <!-- Main Application Container -->
+    <div class="app-container" id="app-container" style="display: none;">
+        <!-- Role-Adaptive Sidebar -->
         <aside class="sidebar">
             <div class="sidebar-logo">
                 <div class="logo-icon">
-                    <i class="fa-solid fa-eye-low-vision neon-pulse"></i>
+                    <i class="fa-solid fa-eye"></i>
                 </div>
                 <div class="logo-text">
                     <h1>RetailVision <span>AI</span></h1>
-                    <small>Enterprise Retail BI</small>
+                    <small id="sidebar-portal-badge">Admin Portal</small>
                 </div>
             </div>
             
             <nav class="sidebar-nav">
-                <ul>
-                    <li class="nav-item active" data-page="dashboard" id="nav-dashboard">
-                        <a href="#"><i class="fa-solid fa-chart-line"></i> <span>Dashboard</span></a>
-                    </li>
-                    <li class="nav-item" data-page="detection" id="nav-detection">
-                        <a href="#"><i class="fa-solid fa-person-rays"></i> <span>Person Detection</span></a>
-                    </li>
-                    <li class="nav-item" data-page="tracking" id="nav-tracking">
-                        <a href="#"><i class="fa-solid fa-user-tag"></i> <span>Object Tracking</span></a>
-                    </li>
-                    <li class="nav-item" data-page="heatmap" id="nav-heatmap">
-                        <a href="#"><i class="fa-solid fa-fire"></i> <span>Heatmap Analytics</span></a>
-                    </li>
-                    <li class="nav-item" data-page="suggestions" id="nav-suggestions">
-                        <a href="#"><i class="fa-solid fa-wand-magic-sparkles"></i> <span>AI Suggestions</span></a>
-                    </li>
-                    <li class="nav-item" data-page="settings" id="nav-settings">
-                        <a href="#"><i class="fa-solid fa-sliders"></i> <span>Settings</span></a>
-                    </li>
+                <ul id="sidebar-menu-list">
+                    <!-- Populated dynamically based on authenticated role -->
                 </ul>
             </nav>
 
@@ -56,8 +78,8 @@
                 <div class="user-profile">
                     <div class="avatar"><i class="fa-solid fa-user-tie"></i></div>
                     <div class="profile-info">
-                        <strong>HQ Operations</strong>
-                        <small>Store Manager</small>
+                        <strong id="user-display-name">Administrator</strong>
+                        <small id="user-display-role">ADMIN</small>
                     </div>
                 </div>
             </div>
@@ -68,81 +90,79 @@
             <!-- App Header -->
             <header class="app-header">
                 <div class="header-title">
-                    <h2>RetailVision AI Dashboard</h2>
-                    <p class="subtitle">AI Powered Retail Analytics Dashboard</p>
+                    <h2 id="header-page-title">Admin Intelligence Dashboard</h2>
+                    <p class="subtitle" id="header-page-subtitle">Real-Time CCTV Person Tracking & Blind Spot Discovery</p>
                 </div>
                 <div class="header-status-panel">
-                    <div class="status-pill">
-                        <span class="status-dot green animate-blink"></span>
-                        <span class="status-label" id="status-label">Live Status: Connected</span>
+                    <div class="status-pill" id="system-status-pill">
+                        <span class="status-dot green animate-blink" id="status-indicator-dot"></span>
+                        <span class="status-label" id="status-label">Live: Ready</span>
                     </div>
                     <div class="meta-item">
-                        <i class="fa-solid fa-store text-cyan"></i>
-                        <span id="store-id">Store: Store 03</span>
+                        <i class="fa-solid fa-store" style="color: var(--primary-orange);"></i>
+                        <span id="store-id">Store: Rehana Store</span>
                     </div>
                     <div class="meta-item">
-                        <i class="fa-solid fa-video text-blue"></i>
-                        <span id="cams-count">Cameras: 4 Connected</span>
+                        <i class="fa-solid fa-video" style="color: var(--accent-blue);"></i>
+                        <span id="cams-count">CAM-01</span>
                     </div>
                     <div class="meta-item">
-                        <i class="fa-solid fa-clock text-slate"></i>
+                        <i class="fa-solid fa-clock"></i>
                         <span id="live-clock">--:--:--</span>
                     </div>
-                    <div class="meta-item text-muted">
-                        <span>Updated: <span id="last-updated">2s ago</span></span>
+                    <div class="meta-item" style="color: var(--text-muted); font-size: 11.5px;">
+                        <i class="fa-solid fa-calendar-check" style="color: var(--primary-orange);"></i>
+                        <span id="last-updated">Last Analyzed: --</span>
+                    </div>
+                    <div class="meta-item logout-btn" id="logout-btn" title="Sign out of portal">
+                        <i class="fa-solid fa-right-from-bracket"></i>
+                        <span>Logout</span>
                     </div>
                 </div>
             </header>
 
-            <!-- Dynamic Subpage Container -->
+            <!-- Dynamic Subpage Body Container -->
             <section class="content-body" id="page-content">
-                <!-- Subpages will mount here dynamically -->
-                <div class="loading-state">
-                    <i class="fa-solid fa-circle-notch fa-spin text-cyan fa-2xl"></i>
-                    <p>Loading Retail Analytics Control Room...</p>
+                <div style="text-align: center; padding: 60px 20px; color: var(--text-muted);">
+                    <i class="fa-solid fa-spinner fa-spin fa-2xl" style="color: var(--primary-orange); margin-bottom: 14px;"></i>
+                    <p>Loading Intelligence Control Room...</p>
                 </div>
             </section>
         </main>
     </div>
 
-    <!-- Drill-Down Details Panel (Modal Overlay) -->
+    <!-- Generic Details Modal Overlay -->
     <div id="details-modal" class="modal-overlay">
-        <div class="modal-content glass-card">
+        <div class="modal-content">
             <header class="modal-header">
-                <div class="modal-title-group">
-                    <span class="modal-badge" id="modal-region-badge">HIGH TRAFFIC</span>
-                    <h3 id="modal-region-title">High Traffic Region Analysis</h3>
-                </div>
+                <h3 id="modal-title">Analytics Detail</h3>
                 <button class="modal-close-btn" id="close-modal-btn"><i class="fa-solid fa-xmark"></i></button>
             </header>
-            <div class="modal-body">
-                <!-- Swapped dynamic detailed view contents -->
+            <div class="modal-body" id="modal-body-content">
+                <!-- Injected dynamically -->
             </div>
         </div>
     </div>
 
-    <!-- Core SPA JavaScript Files -->
+    <!-- Application JavaScript Stack -->
     <script src="js/api.js"></script>
     <script src="js/charts.js"></script>
+    
+    <!-- Page Modules -->
     <script src="js/pages/dashboard.js"></script>
+    <script src="js/pages/video_analysis.js"></script>
     <script src="js/pages/detection.js"></script>
     <script src="js/pages/tracking.js"></script>
+    <script src="js/pages/customer_journey.js"></script>
     <script src="js/pages/heatmap.js"></script>
-    <script src="js/pages/suggestions.js"></script>
+    <script src="js/pages/shelf_analytics.js"></script>
+    <script src="js/pages/blind_zone.js"></script>
+    <script src="js/pages/recommendations.js"></script>
+    <script src="js/pages/reports.js"></script>
     <script src="js/pages/settings.js"></script>
-    <script src="js/pages/details.js"></script>
+    <script src="js/pages/user_management.js"></script>
+    
+    <!-- Core App Router & Controller -->
     <script src="js/app.js"></script>
 </body>
 </html>
-<div class="upload-section">
-    <h2>Upload CCTV Video</h2>
-
-    <input
-        type="file"
-        id="videoFile"
-        accept=".mp4,.avi,.mov">
-
-    <button onclick="uploadVideo()">
-        Upload & Analyze
-    </button>
-</div>

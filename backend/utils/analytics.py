@@ -1,169 +1,191 @@
 import matplotlib
-matplotlib.use('Agg') # Non-interactive backend for server environments
+matplotlib.use('Agg')
 import matplotlib.pyplot as plt
+import matplotlib.patches as patches
 import numpy as np
 import cv2
 import os
+import json
+import pandas as pd
 
-def generate_analytics_images(data_dir, static_dir):
+def generate_analytics_images(data_dir, static_dir, shelf_zones_path=None):
     """
-    Generates premium, dark-themed analytics visualization images:
-    1. store_heatmap.png: visitor density overlaid on the store blueprint.
-    2. blind_zone.png: coverage gaps and unvisited grid blocks.
+    Generates analytics visualization images strictly from actual processed video data:
+    1. store_heatmap.png: visitor density overlaid on the reference store CCTV frame / layout.
+    2. blind_zone.png: spatial grid coverage showing identified low-traffic / blind zones.
+    Returns: blind_spot_percentage (float)
     """
     os.makedirs(static_dir, exist_ok=True)
-    
     width, height = 1280, 720
-    
-    # Store layout zones for drawing
-    zones = {
-        "Entrance": {"x1": 30, "y1": 50, "x2": 150, "y2": 130, "color": "#10B981"},
-        "Exit": {"x1": 30, "y1": 550, "x2": 150, "y2": 630, "color": "#EF4444"},
-        "Shelf A (Snacks)": {"x1": 150, "y1": 150, "x2": 450, "y2": 250, "color": "#8B5CF6"},
-        "Shelf B (Beverages)": {"x1": 550, "y1": 150, "x2": 850, "y2": 250, "color": "#3B82F6"},
-        "Shelf C (Produce)": {"x1": 150, "y1": 350, "x2": 450, "y2": 450, "color": "#06B6D4"},
-        "Shelf D (Bakery)": {"x1": 550, "y1": 350, "x2": 850, "y2": 450, "color": "#F59E0B"},
-        "Checkout": {"x1": 950, "y1": 250, "x2": 1150, "y2": 450, "color": "#EC4899"}
-    }
 
-    # Simulated coordinate points for density generation
-    # ( Entrance -> A -> B -> Checkout -> Exit )
-    np.random.seed(42)
+    # Load configured shelf zones if available
+    zones = {}
+    if shelf_zones_path and os.path.exists(shelf_zones_path):
+        try:
+            with open(shelf_zones_path, 'r') as f:
+                zones = json.load(f)
+        except Exception as e:
+            print(f"Error loading shelf zones: {e}")
+
+    # Fallback to default zones if empty
+    if not zones:
+        zones = {
+            "Shelf A (Groceries)": {"x1": 50, "y1": 100, "x2": 430, "y2": 680, "color": "#F97316"},
+            "Shelf B (Household)": {"x1": 680, "y1": 100, "x2": 1200, "y2": 680, "color": "#3B82F6"},
+            "Central Aisle": {"x1": 430, "y1": 120, "x2": 680, "y2": 680, "color": "#10B981"}
+        }
+
+    # Load actual tracking data
+    tracking_path = os.path.join(data_dir, "tracking_data.csv")
     x_coords = []
     y_coords = []
     
-    # Add dense clusters around Shelves and Checkout
-    # Shelf A
-    x_coords.extend(np.random.normal(300, 50, 400))
-    y_coords.extend(np.random.normal(200, 30, 400))
-    # Shelf B (High traffic)
-    x_coords.extend(np.random.normal(700, 60, 600))
-    y_coords.extend(np.random.normal(200, 30, 600))
-    # Shelf C
-    x_coords.extend(np.random.normal(300, 40, 200))
-    y_coords.extend(np.random.normal(400, 30, 200))
-    # Shelf D (Medium traffic)
-    x_coords.extend(np.random.normal(700, 50, 350))
-    y_coords.extend(np.random.normal(400, 30, 350))
-    # Checkout (Highest congestion)
-    x_coords.extend(np.random.normal(1050, 40, 800))
-    y_coords.extend(np.random.normal(350, 45, 800))
-    # Aisle pathways (walking transitions)
-    x_coords.extend(np.random.uniform(100, 1100, 500))
-    y_coords.extend(np.random.uniform(100, 600, 500))
+    if os.path.exists(tracking_path):
+        try:
+            df = pd.read_csv(tracking_path)
+            if "x" in df.columns and "y" in df.columns and len(df) > 0:
+                # Filter out obvious invalid coordinates
+                valid_df = df[(df["x"] >= 0) & (df["x"] <= width) & (df["y"] >= 0) & (df["y"] <= height)]
+                x_coords = valid_df["x"].tolist()
+                y_coords = valid_df["y"].tolist()
+        except Exception as e:
+            print(f"Error reading tracking_data.csv: {e}")
 
-    # Keep coordinates inside borders
-    x_coords = np.clip(x_coords, 0, width - 1)
-    y_coords = np.clip(y_coords, 0, height - 1)
+    # Load reference frame if available
+    ref_frame_path = os.path.join(static_dir, "reference_frame.jpg")
+    ref_img = None
+    if os.path.exists(ref_frame_path):
+        ref_img = cv2.imread(ref_frame_path)
+        if ref_img is not None:
+            ref_img = cv2.cvtColor(ref_img, cv2.COLOR_BGR2RGB)
+            if ref_img.shape[1] != width or ref_img.shape[0] != height:
+                ref_img = cv2.resize(ref_img, (width, height))
 
-    # 1. RENDER STORE HEATMAP IMAGE
-    plt.style.use('dark_background')
-    fig, ax = plt.subplots(figsize=(12, 6.75), dpi=100) # Exact 16:9 ratio
-    fig.patch.set_facecolor('#0f172a') # Match UI Background
-    ax.set_facecolor('#0f172a')
-    
-    # Generate 2D Gaussian density map
-    heatmap, xedges, yedges = np.histogram2d(x_coords, y_coords, bins=[128, 72], 
-                                             range=[[0, width], [0, height]])
-    
-    # Smooth the density matrix using Gaussian blur
-    # Transpose to match x/y axis
-    heatmap = cv2.GaussianBlur(heatmap.T, (15, 15), 0)
-    
-    # Normalize
-    heatmap = (heatmap / np.max(heatmap)) * 255
-    
-    # Render Heatmap density
-    ax.imshow(heatmap, cmap='jet', extent=[0, width, height, 0], alpha=0.55, origin='upper', interpolation='bicubic')
-    
-    # Draw floor plan boundaries and labels on top
+    # ---------------- 1. RENDER STORE HEATMAP ----------------
+    fig, ax = plt.subplots(figsize=(12, 6.75), dpi=100)
+    fig.patch.set_facecolor('#FFFFFF')
+    ax.set_facecolor('#F8FAFC')
+
+    if ref_img is not None:
+        ax.imshow(ref_img, extent=[0, width, height, 0], aspect='auto', alpha=0.85)
+    else:
+        # Clean architectural blueprint style
+        ax.axhspan(0, height, facecolor='#F8FAFC')
+
+    # Draw density heatmap if coordinates exist
+    if len(x_coords) > 5:
+        heatmap, xedges, yedges = np.histogram2d(x_coords, y_coords, bins=[160, 90], range=[[0, width], [0, height]])
+        heatmap = cv2.GaussianBlur(heatmap.T, (25, 25), 0)
+        max_val = np.max(heatmap)
+        if max_val > 0:
+            heatmap = (heatmap / max_val) * 255.0
+            masked_heatmap = np.ma.masked_where(heatmap < 5, heatmap)
+            ax.imshow(masked_heatmap, cmap='turbo', extent=[0, width, height, 0], alpha=0.6, origin='upper', interpolation='bicubic')
+    else:
+        # Message indicating no tracking points yet
+        ax.text(width / 2, height / 2, "No Customer Trajectory Data Recorded Yet\nProcess a CCTV video clip to generate movement heatmap.",
+                color='#64748B', fontsize=14, ha='center', va='center', fontweight='bold',
+                bbox=dict(facecolor='#FFFFFF', alpha=0.9, edgecolor='#E2E8F0', boxstyle='round,pad=0.8'))
+
+    # Draw configured shelf boundaries and tags
     for name, box in zones.items():
-        rect = plt.Rectangle((box["x1"], box["y1"]), box["x2"] - box["x1"], box["y2"] - box["y1"],
-                             fill=False, edgecolor=box["color"], linewidth=2, linestyle='--')
+        color = box.get("color", "#F97316")
+        bx1, by1 = box.get("x1", 0), box.get("y1", 0)
+        bx2, by2 = box.get("x2", 100), box.get("y2", 100)
+        bw = max(10, bx2 - bx1)
+        bh = max(10, by2 - by1)
+        
+        rect = patches.Rectangle((bx1, by1), bw, bh, fill=False, edgecolor=color, linewidth=2.5, linestyle='-')
         ax.add_patch(rect)
-        # Background block for text legibility
-        ax.text(box["x1"] + 10, box["y1"] + 25, name.upper(), color='#f8fafc', fontsize=9,
-                fontweight='bold', bbox=dict(facecolor='#1e293b', alpha=0.8, edgecolor='none', boxstyle='round,pad=0.3'))
+        ax.text(bx1 + 8, by1 + 22, name.upper(), color='#FFFFFF', fontsize=9, fontweight='bold',
+                bbox=dict(facecolor=color, alpha=0.9, edgecolor='none', boxstyle='round,pad=0.3'))
 
-    # Grid line indicators
     ax.set_xlim(0, width)
-    ax.set_ylim(height, 0) # Inverted Y for camera view alignment
-    ax.grid(color='#334155', linestyle=':', alpha=0.3)
-    ax.set_title("RETAILVISION AI - SHOPSPATIAL LIVE TRAFFIC HEATMAP", color='#06b6d4', fontsize=14, pad=15, fontweight='bold')
-    
-    # Add beautiful legend bar
-    # Colorbar
-    sm = plt.cm.ScalarMappable(cmap='jet', norm=plt.Normalize(vmin=0, vmax=100))
+    ax.set_ylim(height, 0)
+    ax.axis('off')
+    ax.set_title("RETAILVISION AI — REAL-TIME CUSTOMER MOVEMENT HEATMAP", color='#111827', fontsize=13, pad=12, fontweight='bold')
+
+    # Add Colorbar Legend
+    sm = plt.cm.ScalarMappable(cmap='turbo', norm=plt.Normalize(vmin=0, vmax=100))
     sm._A = []
-    cbar = fig.colorbar(sm, ax=ax, orientation='horizontal', pad=0.08, shrink=0.6)
-    cbar.set_label('Traffic Density & Occupancy Rate (%)', color='#94a3b8', fontsize=10)
-    cbar.ax.xaxis.set_tick_params(color='#94a3b8', labelcolor='#94a3b8')
-    
+    cbar = fig.colorbar(sm, ax=ax, orientation='horizontal', pad=0.03, shrink=0.5, aspect=25)
+    cbar.set_label('Observed Shopper Density (Low Traffic → High Concentration)', color='#64748B', fontsize=9, fontweight='bold')
+    cbar.ax.xaxis.set_tick_params(color='#94A3B8', labelcolor='#64748B')
+
     plt.tight_layout()
     heatmap_path = os.path.join(static_dir, "store_heatmap.png")
     plt.savefig(heatmap_path, facecolor=fig.get_facecolor(), edgecolor='none', dpi=100)
     plt.close()
 
-    # 2. RENDER BLIND ZONE IMAGE
-    fig, ax = plt.subplots(figsize=(12, 6.75), dpi=100)
-    fig.patch.set_facecolor('#0f172a')
-    ax.set_facecolor('#0f172a')
+    # ---------------- 2. RENDER BLIND ZONE GRID ----------------
+    # Divide 1280x720 into a 16x9 grid (144 cells, 80x80 px each)
+    grid_cols = 16
+    grid_rows = 9
+    cell_w = width / grid_cols
+    cell_h = height / grid_rows
 
-    # Draw layout boxes
+    grid_counts = np.zeros((grid_rows, grid_cols), dtype=int)
+    for x, y in zip(x_coords, y_coords):
+        c = int(min(grid_cols - 1, max(0, x // cell_w)))
+        r = int(min(grid_rows - 1, max(0, y // cell_h)))
+        grid_counts[r, c] += 1
+
+    total_cells = grid_cols * grid_rows
+    # Cells with zero visits are potential blind spots / dead zones
+    blind_cells = np.sum(grid_counts == 0)
+    blind_percentage = round((blind_cells / total_cells) * 100, 1)
+
+    fig2, ax2 = plt.subplots(figsize=(12, 6.75), dpi=100)
+    fig2.patch.set_facecolor('#FFFFFF')
+    ax2.set_facecolor('#F8FAFC')
+
+    if ref_img is not None:
+        ax2.imshow(ref_img, extent=[0, width, height, 0], aspect='auto', alpha=0.7)
+
+    # Draw grid cells
+    for r in range(grid_rows):
+        for c in range(grid_cols):
+            x1 = c * cell_w
+            y1 = r * cell_h
+            cnt = grid_counts[r, c]
+
+            if cnt == 0 and len(x_coords) > 0:
+                # Potential Blind / Low-Traffic Zone (Translucent Coral Red)
+                cell_rect = patches.Rectangle((x1, y1), cell_w, cell_h, fill=True, facecolor='#EF4444', alpha=0.35, edgecolor='#F87171', linewidth=1.2, linestyle='--')
+                ax2.add_patch(cell_rect)
+            elif cnt > 0:
+                # Active Traffic Cell (Translucent Green to Orange)
+                intensity = min(1.0, cnt / max(1, np.max(grid_counts)))
+                cell_rect = patches.Rectangle((x1, y1), cell_w, cell_h, fill=True, facecolor='#10B981', alpha=0.25 * intensity, edgecolor='#34D399', linewidth=0.8)
+                ax2.add_patch(cell_rect)
+
+    # Highlight identified low-traffic clusters
     for name, box in zones.items():
-        rect = plt.Rectangle((box["x1"], box["y1"]), box["x2"] - box["x1"], box["y2"] - box["y1"],
-                             fill=True, facecolor=(30/255, 41/255, 59/255, 0.2), edgecolor='#334155', linewidth=1)
-        ax.add_patch(rect)
-        ax.text(box["x1"] + 10, box["y1"] + 25, name.upper(), color='#94a3b8', fontsize=8, fontweight='bold')
+        color = box.get("color", "#F97316")
+        bx1, by1 = box.get("x1", 0), box.get("y1", 0)
+        bx2, by2 = box.get("x2", 100), box.get("y2", 100)
+        bw = max(10, bx2 - bx1)
+        bh = max(10, by2 - by1)
+        rect = patches.Rectangle((bx1, by1), bw, bh, fill=False, edgecolor=color, linewidth=2, linestyle=':')
+        ax2.add_patch(rect)
+        ax2.text(bx1 + 6, by1 + 18, name, color='#1E293B', fontsize=8, fontweight='bold',
+                 bbox=dict(facecolor='#FFFFFF', alpha=0.85, edgecolor=color, boxstyle='round,pad=0.2'))
 
-    # Define Blind Zone areas (places with zero density coordinates)
-    # We will shade these regions in a distinct translucent red-grey mask
-    blind_spots = [
-        {"x": 150, "y": 270, "w": 380, "h": 60, "label": "Blind Zone A (Corridor Shadow)"},
-        {"x": 30, "y": 150, "w": 100, "h": 380, "label": "Blind Zone B (Corner Dead Zone)"},
-        {"x": 870, "y": 150, "w": 60, "h": 480, "label": "Blind Zone C (Pillar Obstruction)"}
-    ]
+    ax2.set_xlim(0, width)
+    ax2.set_ylim(height, 0)
+    ax2.axis('off')
+    ax2.set_title(f"RETAILVISION AI — SPATIAL COVERAGE & BLIND ZONE DETECTION ({blind_percentage}% UNVISITED GRID BLOCKS)",
+                  color='#DC2626', fontsize=13, pad=12, fontweight='bold')
 
-    for bs in blind_spots:
-        # Draw translucent filled red-gray box
-        rect = plt.Rectangle((bs["x"], bs["y"]), bs["w"], bs["h"],
-                             fill=True, facecolor='#ef4444', alpha=0.35, edgecolor='#f87171', linewidth=1.5)
-        ax.add_patch(rect)
-        # Label inside blind zone
-        ax.text(bs["x"] + bs["w"]//2, bs["y"] + bs["h"]//2, bs["label"],
-                color='#f8fafc', fontsize=9, fontweight='bold', ha='center', va='center',
-                bbox=dict(facecolor='#991b1b', alpha=0.9, edgecolor='#f87171', boxstyle='round,pad=0.2'))
+    # Legend indicator
+    legend_text = f"Analyzed Grid: {grid_cols}x{grid_rows} (144 Spatial Cells) | Zero-Traffic Cells: {blind_cells} ({blind_percentage}%)\nThreshold: Minimum 1 recorded foot coordinate | Documented Spatial Method: 80x80px Ground-Plane Binning"
+    ax2.text(width / 2, height - 15, legend_text, color='#1E293B', fontsize=9, ha='center', va='bottom',
+             bbox=dict(facecolor='#FFFFFF', alpha=0.92, edgecolor='#E2E8F0', boxstyle='round,pad=0.4'))
 
-    # Draw camera positions and coverage arcs
-    cameras = [
-        {"x": 20, "y": 20, "label": "CAM-01", "angle": 45},
-        {"x": 1260, "y": 20, "label": "CAM-02", "angle": 135},
-        {"x": 640, "y": 360, "label": "CAM-03 (360)", "angle": 0}
-    ]
-    
-    for cam in cameras:
-        # Camera icon anchor
-        plt.plot(cam["x"], cam["y"], marker='^', markersize=12, color='#06b6d4')
-        ax.text(cam["x"] + (15 if cam["x"] < 640 else -45), cam["y"] + 20, cam["label"], 
-                color='#06b6d4', fontsize=9, fontweight='bold')
-        
-        # Coverage area representation
-        if cam["label"] != "CAM-03 (360)":
-            circle = plt.Circle((cam["x"], cam["y"]), 250, color='#06b6d4', fill=False, linestyle=':', alpha=0.3)
-            ax.add_patch(circle)
-        else:
-            circle = plt.Circle((cam["x"], cam["y"]), 150, color='#10b981', fill=False, linestyle=':', alpha=0.4)
-            ax.add_patch(circle)
-
-    ax.set_xlim(0, width)
-    ax.set_ylim(height, 0)
-    ax.grid(color='#334155', linestyle=':', alpha=0.3)
-    ax.set_title("RETAILVISION AI - CAMERA COVERAGE & BLIND SPOT MAP", color='#ef4444', fontsize=14, pad=15, fontweight='bold')
-    
     plt.tight_layout()
     blind_path = os.path.join(static_dir, "blind_zone.png")
-    plt.savefig(blind_path, facecolor=fig.get_facecolor(), edgecolor='none', dpi=100)
+    plt.savefig(blind_path, facecolor=fig2.get_facecolor(), edgecolor='none', dpi=100)
     plt.close()
-    
-    print("Analytics images generated successfully.")
-    return True
+
+    print(f"Analytics images generated successfully. Blind Spot %: {blind_percentage}")
+    return blind_percentage

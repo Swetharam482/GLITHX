@@ -1,14 +1,14 @@
-/* RetailVision AI - Shared Charting Engine */
+/* RetailVision AI - Shared Charting Engine (Light White & Orange Theme) */
 
 const Charts = {
     // Canvas-based lightweight sparkline drawer
-    drawSparkline(canvas, dataArray, strokeColor = '#06b6d4') {
+    drawSparkline(canvas, dataArray, strokeColor = '#F97316') {
         if (!canvas) return;
         const ctx = canvas.getContext('2d');
         const dpr = window.devicePixelRatio || 1;
         
-        // Get layout dimensions
         const rect = canvas.getBoundingClientRect();
+        if (rect.width === 0 || rect.height === 0) return;
         canvas.width = rect.width * dpr;
         canvas.height = rect.height * dpr;
         ctx.scale(dpr, dpr);
@@ -17,23 +17,22 @@ const Charts = {
         const h = rect.height;
         
         ctx.clearRect(0, 0, w, h);
-        if (dataArray.length < 2) return;
+        if (!dataArray || dataArray.length < 2) return;
 
         const max = Math.max(...dataArray) || 1;
         const min = Math.min(...dataArray) || 0;
         const range = max - min === 0 ? 1 : max - min;
 
-        // Coordinates mapping
         const points = dataArray.map((val, idx) => {
             const x = (idx / (dataArray.length - 1)) * w;
-            const y = h - ((val - min) / range) * (h - 6) - 3; // Keep padding bounds
+            const y = h - ((val - min) / range) * (h - 8) - 4;
             return { x, y };
         });
 
-        // Draw fill gradient beneath line
+        // Draw soft fill gradient beneath line
         const gradient = ctx.createLinearGradient(0, 0, 0, h);
-        gradient.addColorStop(0, strokeColor + '30'); // 18% opacity
-        gradient.addColorStop(1, strokeColor + '00'); // Transparent
+        gradient.addColorStop(0, strokeColor + '30');
+        gradient.addColorStop(1, strokeColor + '00');
 
         ctx.beginPath();
         ctx.moveTo(points[0].x, h);
@@ -48,20 +47,17 @@ const Charts = {
         ctx.moveTo(points[0].x, points[0].y);
         points.forEach(p => ctx.lineTo(p.x, p.y));
         ctx.strokeStyle = strokeColor;
-        ctx.lineWidth = 1.5;
+        ctx.lineWidth = 2;
         ctx.lineJoin = 'round';
         ctx.lineCap = 'round';
         ctx.stroke();
 
-        // Draw pulse marker at the last dot
+        // Marker at last dot
         const lastP = points[points.length - 1];
         ctx.beginPath();
         ctx.arc(lastP.x, lastP.y, 3, 0, 2 * Math.PI);
         ctx.fillStyle = strokeColor;
-        ctx.shadowColor = strokeColor;
-        ctx.shadowBlur = 8;
         ctx.fill();
-        ctx.shadowBlur = 0; // Reset
     },
 
     // Doughnut distribution chart
@@ -69,16 +65,19 @@ const Charts = {
         const ctx = document.getElementById(canvasId);
         if (!ctx) return null;
 
+        const defaultColors = ['#F97316', '#3B82F6', '#10B981', '#8B5CF6', '#EC4899', '#F59E0B'];
+        const palette = colors || defaultColors;
+
         return new Chart(ctx, {
             type: 'doughnut',
             data: {
                 labels: labels,
                 datasets: [{
                     data: data,
-                    backgroundColor: colors,
-                    borderColor: '#1e293b',
+                    backgroundColor: palette,
+                    borderColor: '#FFFFFF',
                     borderWidth: 2,
-                    hoverOffset: 4
+                    hoverOffset: 6
                 }]
             },
             options: {
@@ -86,51 +85,107 @@ const Charts = {
                 maintainAspectRatio: false,
                 plugins: {
                     legend: {
-                        position: 'right',
+                        position: 'bottom',
                         labels: {
-                            color: '#e2e8f0',
-                            font: { family: 'Inter', size: 11 },
-                            boxWidth: 12
+                            color: '#475569',
+                            font: { family: 'Inter', size: 11, weight: '500' },
+                            boxWidth: 12,
+                            padding: 12
                         }
                     },
                     tooltip: {
-                        backgroundColor: '#0f172a',
-                        titleColor: '#ffffff',
-                        bodyColor: '#cbd5e1',
-                        borderColor: 'rgba(255,255,255,0.08)',
+                        backgroundColor: '#1E293B',
+                        titleColor: '#FFFFFF',
+                        bodyColor: '#F8FAFC',
+                        borderColor: '#CBD5E1',
                         borderWidth: 1,
                         padding: 10,
-                        displayColors: false
+                        cornerRadius: 8
                     }
                 },
-                cutout: '70%'
+                cutout: '72%'
             }
         });
     },
 
-    // Standard Bar Chart
-    createBarChart(canvasId, labels, data, datasetLabel, barColor = '#3b82f6') {
+    // Bar chart for shelf analytics & dwell times
+    createBarChart(canvasId, labels, data, labelTitle = 'Shopper Visits', primaryColor = '#F97316') {
         const ctx = document.getElementById(canvasId);
         if (!ctx) return null;
-
-        // Vertical linear gradient fill
-        const canvasEl = document.getElementById(canvasId);
-        const c2d = canvasEl.getContext('2d');
-        const gradient = c2d.createLinearGradient(0, 0, 0, 300);
-        gradient.addColorStop(0, barColor);
-        gradient.addColorStop(1, barColor + '20');
 
         return new Chart(ctx, {
             type: 'bar',
             data: {
                 labels: labels,
                 datasets: [{
-                    label: datasetLabel,
+                    label: labelTitle,
                     data: data,
-                    backgroundColor: gradient,
-                    borderColor: barColor,
-                    borderWidth: 1,
-                    borderRadius: 6
+                    backgroundColor: primaryColor,
+                    borderRadius: 6,
+                    borderSkipped: false,
+                    maxBarThickness: 36
+                }]
+            },
+            options: {
+                responsive: true,
+                maintainAspectRatio: false,
+                plugins: {
+                    legend: {
+                        display: false
+                    },
+                    tooltip: {
+                        backgroundColor: '#1E293B',
+                        titleColor: '#FFFFFF',
+                        bodyColor: '#F8FAFC',
+                        borderColor: '#E2E8F0',
+                        borderWidth: 1,
+                        padding: 10,
+                        cornerRadius: 8
+                    }
+                },
+                scales: {
+                    x: {
+                        grid: { display: false },
+                        ticks: {
+                            color: '#64748B',
+                            font: { family: 'Inter', size: 11 }
+                        }
+                    },
+                    y: {
+                        beginAtZero: true,
+                        grid: {
+                            color: '#F1F5F9'
+                        },
+                        ticks: {
+                            color: '#64748B',
+                            font: { family: 'Inter', size: 11 },
+                            precision: 0
+                        }
+                    }
+                }
+            }
+        });
+    },
+
+    // Line chart for traffic timelines & flow
+    createLineChart(canvasId, labels, data, labelTitle = 'Shoppers in View', primaryColor = '#F97316') {
+        const ctx = document.getElementById(canvasId);
+        if (!ctx) return null;
+
+        return new Chart(ctx, {
+            type: 'line',
+            data: {
+                labels: labels,
+                datasets: [{
+                    label: labelTitle,
+                    data: data,
+                    borderColor: primaryColor,
+                    backgroundColor: primaryColor + '20',
+                    fill: true,
+                    tension: 0.35,
+                    borderWidth: 2,
+                    pointBackgroundColor: primaryColor,
+                    pointRadius: 3
                 }]
             },
             options: {
@@ -139,86 +194,35 @@ const Charts = {
                 plugins: {
                     legend: { display: false },
                     tooltip: {
-                        backgroundColor: '#0f172a',
-                        titleColor: '#ffffff',
-                        bodyColor: '#cbd5e1',
-                        borderColor: 'rgba(255,255,255,0.08)',
-                        borderWidth: 1
+                        backgroundColor: '#1E293B',
+                        titleColor: '#FFFFFF',
+                        bodyColor: '#F8FAFC',
+                        borderColor: '#E2E8F0',
+                        borderWidth: 1,
+                        padding: 10,
+                        cornerRadius: 8
                     }
                 },
                 scales: {
-                    y: {
-                        grid: { color: 'rgba(255, 255, 255, 0.04)', drawTicks: false },
-                        ticks: { color: '#94a3b8', font: { family: 'Inter', size: 10 } }
-                    },
                     x: {
                         grid: { display: false },
-                        ticks: { color: '#94a3b8', font: { family: 'Inter', size: 10 } }
-                    }
-                }
-            }
-        });
-    },
-
-    // Double Series Area / Line Chart
-    createLineChart(canvasId, labels, dataset1, dataset2, label1, label2, color1 = '#06b6d4', color2 = '#8b5cf6') {
-        const ctx = document.getElementById(canvasId);
-        if (!ctx) return null;
-
-        return new Chart(ctx, {
-            type: 'line',
-            data: {
-                labels: labels,
-                datasets: [
-                    {
-                        label: label1,
-                        data: dataset1,
-                        borderColor: color1,
-                        backgroundColor: 'transparent',
-                        borderWidth: 2,
-                        tension: 0.35,
-                        pointRadius: 3,
-                        pointHoverRadius: 5
+                        ticks: {
+                            color: '#64748B',
+                            font: { family: 'Inter', size: 11 }
+                        }
                     },
-                    {
-                        label: label2,
-                        data: dataset2,
-                        borderColor: color2,
-                        backgroundColor: 'transparent',
-                        borderWidth: 2,
-                        tension: 0.35,
-                        pointRadius: 3,
-                        pointHoverRadius: 5
-                    }
-                ]
-            },
-            options: {
-                responsive: true,
-                maintainAspectRatio: false,
-                plugins: {
-                    legend: {
-                        position: 'top',
-                        labels: { color: '#e2e8f0', font: { family: 'Inter', size: 11 } }
-                    },
-                    tooltip: {
-                        backgroundColor: '#0f172a',
-                        titleColor: '#ffffff',
-                        bodyColor: '#cbd5e1',
-                        borderColor: 'rgba(255,255,255,0.08)',
-                        borderWidth: 1
-                    }
-                },
-                scales: {
                     y: {
-                        grid: { color: 'rgba(255, 255, 255, 0.04)', drawTicks: false },
-                        ticks: { color: '#94a3b8', font: { family: 'Inter', size: 10 } }
-                    },
-                    x: {
-                        grid: { color: 'rgba(255, 255, 255, 0.04)', drawTicks: false },
-                        ticks: { color: '#94a3b8', font: { family: 'Inter', size: 10 } }
+                        beginAtZero: true,
+                        grid: { color: '#F1F5F9' },
+                        ticks: {
+                            color: '#64748B',
+                            font: { family: 'Inter', size: 11 },
+                            precision: 0
+                        }
                     }
                 }
             }
         });
     }
 };
+

@@ -5,7 +5,7 @@ import time
 import pandas as pd
 import json
 
-# Try to import Ultralytics YOLOv8 and Roboflow Supervision
+# Try to import Ultralytics YOLO and Supervision
 try:
     from ultralytics import YOLO
     import supervision as sv
@@ -13,443 +13,356 @@ try:
 except ImportError:
     YOLO_AVAILABLE = False
 
+from utils.recommendations import generate_recommendations
+from utils.analytics import generate_analytics_images
+
 class RetailDetector:
-    def __init__(self, use_yolo=True):
+    def __init__(self, use_yolo=True, model_name="yolov8n.pt", device="cpu", shelf_zones_path=None):
         self.use_yolo = use_yolo and YOLO_AVAILABLE
+        self.model_name = model_name
+        self.device = device
         self.model = None
         self.tracker = None
-        
+        self.shelf_zones_path = shelf_zones_path
+
+        # Locate model weights
+        actual_model_path = self.model_name
+        if not os.path.exists(actual_model_path):
+            parent_path = os.path.join(os.path.dirname(os.path.abspath(__file__)), "..", self.model_name)
+            if os.path.exists(parent_path):
+                actual_model_path = parent_path
+            else:
+                root_path = os.path.join(os.path.dirname(os.path.abspath(__file__)), "..", "..", self.model_name)
+                if os.path.exists(root_path):
+                    actual_model_path = root_path
+
         if self.use_yolo:
             try:
-                # Load YOLOv8 Nano model (downloads automatically if not present)
-                self.model = YOLO("yolov8n.pt")
-                # Initialize ByteTrack tracker from Supervision
+                self.model = YOLO(actual_model_path)
                 self.tracker = sv.ByteTrack()
+                print(f"RetailDetector initialized successfully with {actual_model_path} on {device}")
             except Exception as e:
-                print(f"Error initializing YOLOv8: {e}. Switching to simulation fallback.")
+                print(f"Error loading YOLO model ({actual_model_path}): {e}. Falling back to simulation.")
                 self.use_yolo = False
 
-        # Store layout zones
-        self.zones = {
-            "Entrance": {"x1": 30, "y1": 50, "x2": 150, "y2": 130},
-            "Exit": {"x1": 30, "y1": 550, "x2": 150, "y2": 630},
-            "Shelf A (Snacks)": {"x1": 150, "y1": 150, "x2": 450, "y2": 250},
-            "Shelf B (Beverages)": {"x1": 550, "y1": 150, "x2": 850, "y2": 250},
-            "Shelf C (Produce)": {"x1": 150, "y1": 350, "x2": 450, "y2": 450},
-            "Shelf D (Bakery)": {"x1": 550, "y1": 350, "x2": 850, "y2": 450},
-            "Checkout": {"x1": 950, "y1": 250, "x2": 1150, "y2": 450}
+        # Load shelf zones
+        self.zones = self._load_shelf_zones()
+
+        # Tracking state
+        self.track_history = {}            # {track_id: [(cx, cy, frame_idx, video_ts)]}
+        self.active_shelf_presence = {}    # {track_id: {zone_name: entry_frame}}
+        self.shelf_dwell_seconds = {}      # {zone_name: [list of dwell durations in seconds]}
+        self.shelf_unique_visitors = {}    # {zone_name: set(track_ids)}
+        self.shelf_visit_counts = {}       # {zone_name: total visit entries}
+        self.track_zone_chronology = {}    # {track_id: [chronological list of zones visited]}
+        self.max_concurrent_occupancy = 0
+        self.total_processed_frames = 0
+        self.video_fps = 24.0
+
+    def _load_shelf_zones(self):
+        if self.shelf_zones_path and os.path.exists(self.shelf_zones_path):
+            try:
+                with open(self.shelf_zones_path, 'r') as f:
+                    return json.load(f)
+            except Exception as e:
+                print(f"Error reading shelf zones: {e}")
+        return {
+            "Shelf A (Groceries & Oils)": {"x1": 50, "y1": 100, "x2": 430, "y2": 680, "color": "#F97316"},
+            "Shelf B (Cleaning & Household)": {"x1": 680, "y1": 100, "x2": 1200, "y2": 680, "color": "#3B82F6"},
+            "Central Walking Aisle": {"x1": 430, "y1": 120, "x2": 680, "y2": 680, "color": "#10B981"},
+            "Back Endcap": {"x1": 400, "y1": 20, "x2": 700, "y2": 120, "color": "#8B5CF6"},
+            "Front Checkout Approach": {"x1": 200, "y1": 600, "x2": 800, "y2": 720, "color": "#EC4899"}
         }
 
-        # Track history dictionary: {track_id: [(x, y, timestamp)]}
-        self.track_history = {}
-        # Dwell time tracking dictionary: {track_id: {zone_name: start_time}}
-        self.dwell_tracker = {}
-        # Completed dwell records: {track_id: {zone_name: dwell_seconds}}
-        self.dwell_records = {}
-        
-        # Simulated shopper trajectory data for fallback/demo
-        self.simulated_shoppers = [
-            {"id": 101, "start": 0, "end": 800, "color": (255, 255, 0),
-             "path": [(100, 100), (300, 200), (300, 200), (700, 200), (700, 200), (1050, 350), (100, 600)]},
-            {"id": 102, "start": 100, "end": 900, "color": (255, 0, 255),
-             "path": [(100, 100), (300, 400), (300, 400), (700, 400), (700, 400), (100, 600)]},
-            {"id": 103, "start": 200, "end": 850, "color": (0, 255, 0),
-             "path": [(100, 100), (700, 200), (700, 200), (700, 400), (700, 400), (1050, 350), (100, 600)]},
-            {"id": 104, "start": 50, "end": 750, "color": (0, 255, 255),
-             "path": [(100, 100), (300, 200), (300, 200), (700, 400), (1050, 350), (100, 600)]},
-            {"id": 105, "start": 300, "end": 900, "color": (255, 128, 0),
-             "path": [(100, 100), (300, 400), (1050, 350), (1050, 350), (100, 600)]}
-        ]
+    def reload_zones(self, zones_dict=None):
+        if zones_dict:
+            self.zones = zones_dict
+        else:
+            self.zones = self._load_shelf_zones()
 
     def get_zone_at(self, x, y):
-        """Helper to determine retail zone of a coordinate."""
+        """Finds which configured shelf region contains point (x, y)."""
         for name, box in self.zones.items():
-            if box["x1"] <= x <= box["x2"] and box["y1"] <= y <= box["y2"]:
+            if box.get("x1", 0) <= x <= box.get("x2", 0) and box.get("y1", 0) <= y <= box.get("y2", 0):
                 return name
-        return "Aisle"
+        return "Walking Aisle"
 
-    def process_frame(self, frame, frame_idx, mode="tracking"):
+    def _get_id_color(self, track_id):
+        palette = [
+            (249, 115, 22),   # #F97316 Orange
+            (59, 130, 246),   # #3B82F6 Blue
+            (16, 185, 129),   # #10B981 Green
+            (139, 92, 246),   # #8B5CF6 Purple
+            (236, 72, 153),   # #EC4899 Pink
+            (14, 165, 233),   # #0EA5E9 Sky
+            (245, 158, 11),   # #F59E0B Amber
+            (99, 102, 241)    # #6366F1 Indigo
+        ]
+        rgb = palette[track_id % len(palette)]
+        return (rgb[2], rgb[1], rgb[0])  # Convert to BGR for OpenCV
+
+    def _calculate_speed(self, track_id, fps):
+        history = self.track_history.get(track_id, [])
+        if len(history) < 3:
+            return 1.1
+        p1 = history[-3]
+        p2 = history[-1]
+        dist_px = np.sqrt((p2[0] - p1[0])**2 + (p2[1] - p1[1])**2)
+        # Calibration: approx 150 px = 1 meter on ground plane
+        meters = dist_px / 150.0
+        frame_diff = max(1, p2[2] - p1[2])
+        seconds = frame_diff / max(1.0, fps)
+        speed = meters / max(0.01, seconds)
+        return min(3.5, max(0.1, speed))
+
+    def process_frame(self, frame, frame_idx, fps=24.0, mode="tracking"):
         """
-        Processes a single frame for detection or tracking and overlays annotations.
-        Modes: 'detection' (green bounding boxes), 'tracking' (unique IDs, paths, speeds).
-        Returns annotated_frame, info_dict
+        Processes a single video frame:
+        - Detects people using YOLOv8
+        - Tracks identities across frames with ByteTrack
+        - Measures entry and dwell times in configured shelf regions
+        - Annotates frame with bounding boxes, IDs, speeds, and trajectory trails
         """
+        self.video_fps = fps
+        self.total_processed_frames = max(self.total_processed_frames, frame_idx + 1)
+
+        # Standardize working resolution to 1280x720
         h, w = frame.shape[:2]
+        if w != 1280 or h != 720:
+            working_frame = cv2.resize(frame, (1280, 720))
+        else:
+            working_frame = frame.copy()
+
         info = {
-            "fps": 30.0,
-            "inference_time": 5.4, # ms
+            "fps": round(fps, 1),
+            "inference_time_ms": 0.0,
             "count": 0,
             "active_tracks": []
         }
 
-        # Use YOLOv8 if enabled
-        if self.use_yolo:
-            start_time = time.time()
-            results = self.model(frame, classes=[0], verbose=False)[0] # Class 0 is person
-            inference_time = (time.time() - start_time) * 1000
-            info["inference_time"] = inference_time
+        if self.use_yolo and self.model is not None:
+            t0 = time.time()
+            # Run YOLO person detection (class 0 = person)
+            results = self.model(working_frame, classes=[0], imgsz=640, conf=0.25, verbose=False)[0]
+            info["inference_time_ms"] = round((time.time() - t0) * 1000, 1)
 
-            # Format detections for ByteTrack
             detections = sv.Detections.from_ultralytics(results)
-            
-            if mode == "tracking":
+            if mode == "tracking" and self.tracker is not None:
                 detections = self.tracker.update_with_detections(detections)
 
-            info["count"] = len(detections)
-            annotated_frame = frame.copy()
+            active_count = len(detections)
+            info["count"] = active_count
+            self.max_concurrent_occupancy = max(self.max_concurrent_occupancy, active_count)
 
-            # Draw annotations
+            annotated_frame = working_frame.copy()
+
             for i, box in enumerate(detections.xyxy):
                 x1, y1, x2, y2 = map(int, box[:4])
-                cx, cy = (x1 + x2) // 2, (y1 + y2) // 2
-                
-                track_id = int(detections.tracker_id[i]) if hasattr(detections, "tracker_id") and len(detections.tracker_id) > 0 else i + 1
-                confidence = float(detections.confidence[i]) if hasattr(detections, "confidence") and len(detections.confidence) > 0 else 0.85
-                
-                zone = self.get_zone_at(cx, cy)
-                
-                # Update tracks
+                # Ground foot coordinate represents shopper floor position
+                cx = (x1 + x2) // 2
+                cy = y2
+
+                if hasattr(detections, "tracker_id") and detections.tracker_id is not None and len(detections.tracker_id) > i and detections.tracker_id[i] is not None:
+                    track_id = int(detections.tracker_id[i])
+                else:
+                    track_id = i + 1
+
+                confidence = float(detections.confidence[i]) if hasattr(detections, "confidence") and len(detections.confidence) > i else 0.85
+                current_zone = self.get_zone_at(cx, cy)
+                video_ts = frame_idx / max(1.0, fps)
+
+                # Append to track history
                 if track_id not in self.track_history:
                     self.track_history[track_id] = []
-                self.track_history[track_id].append((cx, cy, time.time()))
-                
-                # Dwell time computation
-                self._update_dwell_time(track_id, zone)
+                    self.track_zone_chronology[track_id] = []
+                    self.active_shelf_presence[track_id] = {}
 
-                # Draw based on mode
+                self.track_history[track_id].append((cx, cy, frame_idx, video_ts))
+
+                # Update chronological zone visits (deduplicated sequence)
+                if current_zone != "Walking Aisle":
+                    if not self.track_zone_chronology[track_id] or self.track_zone_chronology[track_id][-1] != current_zone:
+                        self.track_zone_chronology[track_id].append(current_zone)
+
+                # Shelf presence & dwell time state transitions
+                active_zones = list(self.active_shelf_presence[track_id].keys())
+                for z in active_zones:
+                    if z != current_zone:
+                        # Exited zone: calculate dwell
+                        entry_frame = self.active_shelf_presence[track_id].pop(z)
+                        dwell_sec = max(0.5, (frame_idx - entry_frame) / max(1.0, fps))
+                        if z not in self.shelf_dwell_seconds:
+                            self.shelf_dwell_seconds[z] = []
+                        self.shelf_dwell_seconds[z].append(dwell_sec)
+
+                if current_zone != "Walking Aisle":
+                    if current_zone not in self.active_shelf_presence[track_id]:
+                        self.active_shelf_presence[track_id][current_zone] = frame_idx
+                        # Increment unique visitors and visit count
+                        if current_zone not in self.shelf_unique_visitors:
+                            self.shelf_unique_visitors[current_zone] = set()
+                            self.shelf_visit_counts[current_zone] = 0
+                        self.shelf_unique_visitors[current_zone].add(track_id)
+                        self.shelf_visit_counts[current_zone] += 1
+
+                speed = self._calculate_speed(track_id, fps)
+                color = self._get_id_color(track_id)
+
                 if mode == "detection":
-                    # Green boxes, standard class/confidence label
-                    cv2.rectangle(annotated_frame, (x1, y1), (x2, y2), (0, 255, 0), 2)
-                    cv2.putText(annotated_frame, f"Person {confidence:.2f}", (x1, y1 - 10),
-                                cv2.FONT_HERSHEY_SIMPLEX, 0.5, (0, 255, 0), 1, cv2.LINE_AA)
+                    # Standard detection box
+                    cv2.rectangle(annotated_frame, (x1, y1), (x2, y2), (249, 115, 22), 2)
+                    label = f"Person {confidence:.2f}"
+                    cv2.putText(annotated_frame, label, (x1, max(20, y1 - 8)),
+                                cv2.FONT_HERSHEY_SIMPLEX, 0.45, (249, 115, 22), 1, cv2.LINE_AA)
                 else:
-                    # Multi-object tracking: Unique colors, paths, ID
-                    color = self._get_id_color(track_id)
+                    # Multi-object tracking: ID label, zone, speed, trail
                     cv2.rectangle(annotated_frame, (x1, y1), (x2, y2), color, 2)
-                    
-                    # Compute speed based on coordinates delta
-                    speed = self._calculate_speed(track_id)
-                    
-                    # Info box overlay
-                    cv2.putText(annotated_frame, f"ID: {track_id} | {zone} | {speed:.1f} m/s", (x1, y1 - 10),
-                                cv2.FONT_HERSHEY_SIMPLEX, 0.4, color, 1, cv2.LINE_AA)
-                    
-                    # Draw trails
-                    points = self.track_history[track_id][-30:] # Draw last 30 frames trail
-                    for idx in range(1, len(points)):
-                        cv2.line(annotated_frame, points[idx-1][:2], points[idx][:2], color, 2)
 
-                    info["active_tracks"].append({
-                        "id": track_id,
-                        "x": cx,
-                        "y": cy,
-                        "zone": zone,
-                        "speed": speed
-                    })
-            
+                    # Info badge text
+                    label = f"ID #{track_id} | {current_zone} | {speed:.1f} m/s"
+                    (tw, th), _ = cv2.getTextSize(label, cv2.FONT_HERSHEY_SIMPLEX, 0.42, 1)
+                    cv2.rectangle(annotated_frame, (x1, max(0, y1 - th - 8)), (x1 + tw + 6, max(th + 8, y1)), (15, 23, 42), -1)
+                    cv2.putText(annotated_frame, label, (x1 + 3, max(th + 2, y1 - 4)),
+                                cv2.FONT_HERSHEY_SIMPLEX, 0.42, color, 1, cv2.LINE_AA)
+
+                    # Draw footpoint & trajectory trail (last 30 points)
+                    cv2.circle(annotated_frame, (cx, cy), 4, color, -1)
+                    trail = self.track_history[track_id][-30:]
+                    for pt_i in range(1, len(trail)):
+                        cv2.line(annotated_frame, (trail[pt_i-1][0], trail[pt_i-1][1]), (trail[pt_i][0], trail[pt_i][1]), color, 2)
+
+                info["active_tracks"].append({
+                    "id": track_id,
+                    "x": cx,
+                    "y": cy,
+                    "zone": current_zone,
+                    "speed": speed,
+                    "confidence": confidence
+                })
+
             return annotated_frame, info
 
         else:
-            # High-fidelity procedural simulation mode
-            # This generates precise bounding boxes on the mockup retail layout.
-            annotated_frame = frame.copy()
-            sim_count = 0
-            
-            for shopper in self.simulated_shoppers:
-                start = shopper["start"]
-                end = shopper["end"]
-                
-                if start <= frame_idx < end:
-                    coord_idx = frame_idx - start
-                    # Shopper path coordinates
-                    # Let's map coordinates. The generated video already draws them as circles,
-                    # so we will draw bounding boxes around them.
-                    # In generator.py, shoppers walk along coords. Let's rebuild the coordinates.
-                    coords = self._get_sim_coords(shopper, frame_idx)
-                    if coords:
-                        cx, cy = coords
-                        sim_count += 1
-                        
-                        # Generate bbox around the center coordinate
-                        w_box, h_box = 40, 80
-                        x1, y1 = cx - w_box//2, cy - h_box//2 - 10
-                        x2, y2 = cx + w_box//2, cy + h_box//2 + 10
-                        
-                        zone = self.get_zone_at(cx, cy)
-                        track_id = shopper["id"]
-                        
-                        if track_id not in self.track_history:
-                            self.track_history[track_id] = []
-                        self.track_history[track_id].append((cx, cy, time.time()))
-                        self._update_dwell_time(track_id, zone)
-                        
-                        if mode == "detection":
-                            # Green bounding box
-                            cv2.rectangle(annotated_frame, (x1, y1), (x2, y2), (0, 255, 0), 2)
-                            cv2.putText(annotated_frame, f"Person {0.92 - (frame_idx % 5)*0.01:.2f}", (x1, y1 - 10),
-                                        cv2.FONT_HERSHEY_SIMPLEX, 0.5, (0, 255, 0), 1, cv2.LINE_AA)
-                        else:
-                            # Tracking mode: Unique color details
-                            color = shopper["color"]
-                            # Convert RGB to BGR
-                            color_bgr = (color[2], color[1], color[0])
-                            
-                            cv2.rectangle(annotated_frame, (x1, y1), (x2, y2), color_bgr, 2)
-                            speed = self._calculate_speed(track_id)
-                            
-                            # ID labels
-                            cv2.putText(annotated_frame, f"ID: {track_id} | {zone}", (x1, y1 - 10),
-                                        cv2.FONT_HERSHEY_SIMPLEX, 0.45, color_bgr, 1, cv2.LINE_AA)
-                            
-                            # Draw trails
-                            points = self.track_history[track_id][-30:]
-                            for idx in range(1, len(points)):
-                                cv2.line(annotated_frame, points[idx-1][:2], points[idx][:2], color_bgr, 2)
-                                
-                            info["active_tracks"].append({
-                                "id": track_id,
-                                "x": cx,
-                                "y": cy,
-                                "zone": zone,
-                                "speed": speed
-                            })
-
-            info["count"] = sim_count
-            info["inference_time"] = 0.8  # ms (ultra-fast simulation)
+            # Fallback if YOLO not available
+            annotated_frame = working_frame.copy()
+            cv2.putText(annotated_frame, "YOLO engine offline - waiting for video feed", (50, 50),
+                        cv2.FONT_HERSHEY_SIMPLEX, 0.7, (0, 0, 255), 2)
             return annotated_frame, info
 
-    def _get_sim_coords(self, shopper, frame_idx):
-        start = shopper["start"]
-        end = shopper["end"]
-        active_duration = end - start
-        path_points = shopper["path"]
-        segments = len(path_points) - 1
-        frames_per_segment = active_duration // segments
-        
-        coord_idx = frame_idx - start
-        
-        # Determine segment
-        seg_idx = coord_idx // frames_per_segment
-        if seg_idx >= segments:
-            seg_idx = segments - 1
-            
-        p1 = path_points[seg_idx]
-        p2 = path_points[seg_idx + 1]
-        
-        seg_start = seg_idx * frames_per_segment
-        seg_duration = frames_per_segment
-        if seg_idx == segments - 1:
-            seg_duration += active_duration % segments
-            
-        t = (coord_idx - seg_start) / seg_duration
-        t = min(1.0, max(0.0, t))
-        
-        # Same organic noise math to sync bounding boxes with coordinates
-        np.random.seed(frame_idx + shopper["id"])
-        noise_x = int(np.random.normal(0, 2))
-        noise_y = int(np.random.normal(0, 2))
-        if p1 == p2:
-            noise_x = int(np.random.normal(0, 4))
-            noise_y = int(np.random.normal(0, 4))
-            
-        x = int((1 - t) * p1[0] + t * p2[0]) + noise_x
-        y = int((1 - t) * p1[1] + t * p2[1]) + noise_y
-        return x, y
+    def finalize_video(self, total_frames, fps=24.0):
+        """Closes out any open dwell presences at end of video playback."""
+        for track_id, active_dict in self.active_shelf_presence.items():
+            for z, entry_frame in active_dict.items():
+                dwell_sec = max(0.5, (total_frames - entry_frame) / max(1.0, fps))
+                if z not in self.shelf_dwell_seconds:
+                    self.shelf_dwell_seconds[z] = []
+                self.shelf_dwell_seconds[z].append(dwell_sec)
+        self.active_shelf_presence.clear()
 
-    def _get_id_color(self, track_id):
-        # Deterministic color generation based on ID
-        np.random.seed(track_id)
-        return tuple(int(x) for x in np.random.randint(50, 255, size=3))
-
-    def _calculate_speed(self, track_id):
-        history = self.track_history.get(track_id, [])
-        if len(history) < 5:
-            return 1.2 # average human speed (m/s)
-            
-        # Compute distance between recent frames
-        p1 = history[-5]
-        p2 = history[-1]
-        
-        dist = np.sqrt((p2[0] - p1[0])**2 + (p2[1] - p1[1])**2)
-        # Scale pixels to meters (approx 100 pixels = 2 meters)
-        meters = dist * 0.02
-        time_diff = max(0.01, p2[2] - p1[2])
-        speed = meters / time_diff
-        return min(3.5, max(0.2, speed)) # Cap speed to realistic walk values
-
-    def _update_dwell_time(self, track_id, current_zone):
-        """Tracks dwell time for a shopper in a specific retail zone."""
-        current_time = time.time()
-        
-        if track_id not in self.dwell_tracker:
-            self.dwell_tracker[track_id] = {}
-        if track_id not in self.dwell_records:
-            self.dwell_records[track_id] = {}
-
-        # If they transitioned to a new zone, close out their old zone dwell
-        active_zones = list(self.dwell_tracker[track_id].keys())
-        for zone in active_zones:
-            if zone != current_zone:
-                start_time = self.dwell_tracker[track_id].pop(zone)
-                dwell_sec = current_time - start_time
-                self.dwell_records[track_id][zone] = self.dwell_records[track_id].get(zone, 0) + dwell_sec
-        
-        # Start tracking new zone
-        if current_zone != "Aisle" and current_zone not in self.dwell_tracker[track_id]:
-            self.dwell_tracker[track_id][current_zone] = current_time
-
-    def get_dwell_times(self):
-        """Converts internal dwell times to structured seconds."""
-        current_time = time.time()
-        output = {}
-        
-        # Merge finished records and current active records
-        for track_id, records in self.dwell_records.items():
-            output[track_id] = records.copy()
-            
-        # Add active sessions
-        for track_id, active in self.dwell_tracker.items():
-            if track_id not in output:
-                output[track_id] = {}
-            for zone, start_time in active.items():
-                active_sec = current_time - start_time
-                output[track_id][zone] = output[track_id].get(zone, 0) + active_sec
-                
-        return output
-
-    def save_reports(self, data_dir, static_dir):
-        """Compiles and exports tracking, dwell, shelf, and heatmap reports."""
+    def save_reports(self, data_dir, static_dir, fps=24.0):
+        """
+        Compiles and writes real analytical reports strictly from observed tracking data:
+        - tracking_data.csv
+        - dwell_time.csv
+        - shelf_report.csv
+        - customer_profiles.json
+        - recommendations.json
+        - store_heatmap.png & blind_zone.png
+        """
         os.makedirs(data_dir, exist_ok=True)
         os.makedirs(static_dir, exist_ok=True)
-        
-        # Compile tracking history data
+
+        # 1. Compile tracking_data.csv
         tracking_rows = []
         for track_id, history in self.track_history.items():
-            for x, y, ts in history:
-                zone = self.get_zone_at(x, y)
+            for cx, cy, f_idx, video_ts in history:
+                z = self.get_zone_at(cx, cy)
                 tracking_rows.append({
                     "track_id": track_id,
-                    "x": x,
-                    "y": y,
-                    "timestamp": time.strftime('%Y-%m-%d %H:%M:%S', time.localtime(ts)),
-                    "zone": zone
+                    "frame_idx": f_idx,
+                    "x": cx,
+                    "y": cy,
+                    "video_timestamp_sec": round(video_ts, 2),
+                    "zone": z
                 })
-        
-        df_track = pd.DataFrame(tracking_rows if tracking_rows else [{"track_id": 101, "x": 100, "y": 100, "timestamp": "2026-07-22 09:55:00", "zone": "Entrance"}])
+
+        df_track = pd.DataFrame(tracking_rows if tracking_rows else [{"track_id": 0, "frame_idx": 0, "x": 0, "y": 0, "video_timestamp_sec": 0.0, "zone": "None"}])
         df_track.to_csv(os.path.join(data_dir, "tracking_data.csv"), index=False)
 
-        # Compile Dwell Times Report
-        dwell_data = self.get_dwell_times()
+        # 2. Compile dwell_time.csv
         dwell_rows = []
-        for track_id, zones_dwell in dwell_data.items():
-            for zone, sec in zones_dwell.items():
+        for zone_name, dwell_list in self.shelf_dwell_seconds.items():
+            for dur in dwell_list:
                 dwell_rows.append({
-                    "customer_id": track_id,
-                    "zone": zone,
-                    "dwell_time_seconds": round(sec, 2),
-                    "interaction_type": "Browsing" if sec > 5 else "Passing"
+                    "zone": zone_name,
+                    "dwell_time_seconds": round(dur, 1),
+                    "interaction_type": "Active Browsing" if dur > 5.0 else "Passing Walkby"
                 })
-        
-        df_dwell = pd.DataFrame(dwell_rows if dwell_rows else [{"customer_id": 101, "zone": "Shelf A (Snacks)", "dwell_time_seconds": 15.4, "interaction_type": "Browsing"}])
+
+        df_dwell = pd.DataFrame(dwell_rows if dwell_rows else [{"zone": "None", "dwell_time_seconds": 0.0, "interaction_type": "None"}])
         df_dwell.to_csv(os.path.join(data_dir, "dwell_time.csv"), index=False)
 
-        # Compile Shelf Report (Aggregate performance data)
+        # 3. Compile shelf_report.csv
         shelf_agg = []
         for zone_name in self.zones.keys():
-            if "Shelf" in zone_name:
-                zone_dwells = [row["dwell_time_seconds"] for row in dwell_rows if row["zone"] == zone_name]
-                cust_count = len(set([row["customer_id"] for row in dwell_rows if row["zone"] == zone_name]))
-                avg_dwell = np.mean(zone_dwells) if zone_dwells else 0
-                max_dwell = np.max(zone_dwells) if zone_dwells else 0
-                
-                # Mock conversions
-                products_viewed = cust_count * 3
-                products_purchased = int(cust_count * 0.7)
-                conversion = round((products_purchased / max(1, cust_count)) * 100, 1)
-                
+            if zone_name != "Walking Aisle":
+                cust_set = self.shelf_unique_visitors.get(zone_name, set())
+                visitor_count = len(cust_set)
+                dwell_list = self.shelf_dwell_seconds.get(zone_name, [])
+                avg_dwell = round(float(np.mean(dwell_list)), 1) if dwell_list else 0.0
+                max_dwell = round(float(np.max(dwell_list)), 1) if dwell_list else 0.0
+                engagement_score = min(100, int(avg_dwell * 6.5))
+
                 shelf_agg.append({
                     "shelf_id": zone_name,
-                    "customer_count": cust_count,
-                    "avg_dwell_time": round(avg_dwell, 1),
-                    "max_dwell_time": round(max_dwell, 1),
-                    "products_viewed": products_viewed,
-                    "products_purchased": products_purchased,
-                    "conversion_rate": conversion,
-                    "engagement_score": min(100, int(avg_dwell * 4))
+                    "customer_count": visitor_count,
+                    "avg_dwell_time": avg_dwell,
+                    "max_dwell_time": max_dwell,
+                    "engagement_score": engagement_score
                 })
-        
+
         df_shelf = pd.DataFrame(shelf_agg)
         df_shelf.to_csv(os.path.join(data_dir, "shelf_report.csv"), index=False)
 
-        # Generate recommendation.json
-        recs = [
-            {
-                "id": 1,
-                "type": "Shelf Enhancement",
-                "priority": "HIGH",
-                "confidence": 94.5,
-                "improvement": 22.5,
-                "revenue_increase": 4200,
-                "description": "Increase stock of premium beverages on Shelf B. Customer count is high but products purchased conversion rate is only 45%. Rearrange lower shelves to place promo offers at eye level.",
-                "details": "Shelf B has 3.2 min average dwell time but products purchased count indicates high friction in checkout."
-            },
-            {
-                "id": 2,
-                "type": "Store Layout Optimization",
-                "priority": "HIGH",
-                "confidence": 89.0,
-                "improvement": 18.2,
-                "revenue_increase": 5800,
-                "description": "Create a clear secondary aisle path from Shelf A directly to the Checkout Counter. Floor plan shows 30% traffic bottlenecking at the central intersection during peak periods.",
-                "details": "Central corridor is experiencing high shopper density with speeds dropping to 0.4 m/s."
-            },
-            {
-                "id": 3,
-                "type": "Product Placement Recommendation",
-                "priority": "MEDIUM",
-                "confidence": 82.5,
-                "improvement": 12.0,
-                "revenue_increase": 2400,
-                "description": "Cross-merchandise top-performing items from Shelf A (Snacks) onto Shelf B (Beverages). Analyze showing customers visiting snacks have an 80% affinity to purchase soft drinks.",
-                "details": "Shopper flow path analyses show high path correlation: Entrance -> Shelf A -> Shelf B."
-            },
-            {
-                "id": 4,
-                "type": "Blind Spot Recommendation",
-                "priority": "MEDIUM",
-                "confidence": 88.0,
-                "improvement": 14.5,
-                "revenue_increase": 1950,
-                "description": "Relocate low-performing item categories from the blind spot behind Shelf C. The corner zone has a 2% traffic footprint. Add bright neon directional signage.",
-                "details": "Customer tracking path reports show zero entries into coordinate grid block (2,6) adjacent to Shelf C."
-            },
-            {
-                "id": 5,
-                "type": "Camera Placement Recommendation",
-                "priority": "LOW",
-                "confidence": 76.4,
-                "improvement": 8.0,
-                "revenue_increase": 800,
-                "description": "Reposition CAM-04 slightly 15 degrees right to cover the dark corner near Shelf C, reducing current blind spot footprint of 6.2% down to under 2%.",
-                "details": "Current angle suffers from structural pillar occlusion."
-            },
-            {
-                "id": 6,
-                "type": "Checkout Optimization",
-                "priority": "HIGH",
-                "confidence": 91.2,
-                "improvement": 25.0,
-                "revenue_increase": 6500,
-                "description": "Open checkout counter lane 2 dynamically between 4:00 PM and 6:00 PM. High traffic region counts indicate dwell times at checkout reach critical threshold of 6 minutes, causing checkout drops.",
-                "details": "Customer queue sizes at Checkout reach maximum of 5 shopper agents during evening periods."
+        # 4. Compile customer_profiles.json
+        total_unique_custs = len(self.track_history)
+        customer_profiles = {}
+        for track_id, history in self.track_history.items():
+            first_frame = history[0][2]
+            last_frame = history[-1][2]
+            duration_sec = round((last_frame - first_frame) / max(1.0, fps), 1)
+            first_ts = round(history[0][3], 1)
+            last_ts = round(history[-1][3], 1)
+            chronology = self.track_zone_chronology.get(track_id, [])
+
+            # Downsample trajectory points for JSON export
+            trajectory_samples = [{"x": x, "y": y, "sec": round(ts, 1)} for x, y, f, ts in history[::4]]
+
+            customer_profiles[f"Customer {track_id}"] = {
+                "customer_id": f"Customer {track_id}",
+                "entry_video_sec": first_ts,
+                "exit_video_sec": last_ts,
+                "duration_seconds": duration_sec,
+                "visited_zones": chronology,
+                "current_zone": self.get_zone_at(history[-1][0], history[-1][1]),
+                "status": "Exited" if last_frame < self.total_processed_frames - 10 else "Inside",
+                "trajectory": trajectory_samples
             }
-        ]
-        
+
+        with open(os.path.join(data_dir, "customer_profiles.json"), "w") as f:
+            json.dump(customer_profiles, f, indent=4)
+
+        # 5. Generate Heatmap and Blind Spot Visualizations
+        blind_pct = generate_analytics_images(data_dir, static_dir, self.shelf_zones_path)
+
+        # 6. Generate Recommendations
+        recs = generate_recommendations(df_shelf, df_dwell, blind_pct, total_unique_custs)
         with open(os.path.join(data_dir, "recommendation.json"), "w") as f:
             json.dump(recs, f, indent=4)
-            
-        print("Reports exported successfully.")
-        print("Reports exported successfully.")
-        def detect_people(video_path):
-            # Your YOLOv8 detection code
-            pass
+
+        print("RetailVision AI: Real analytics reports generated and exported successfully.")
+        return {
+            "total_customers": total_unique_custs,
+            "blind_percentage": blind_pct,
+            "max_occupancy": self.max_concurrent_occupancy
+        }

@@ -1,0 +1,35 @@
+# Python
+__pycache__/
+*.py[cod]
+*$py.class
+*.log
+.pytest_cache/
+
+# Virtual Environment
+.venv/
+venv/
+env/
+
+# IDE & Editor
+.vscode/
+.idea/
+
+# OS files
+.DS_Store
+Thumbs.db
+desktop.ini
+
+# Heavy generated data & video uploads
+backend/data/uploads/*
+backend/data/processed/*
+backend/data/videos/*
+!backend/data/videos/.gitkeep
+!backend/data/uploads/.gitkeep
+!backend/data/processed/.gitkeep
+
+# Large temporary videos (except lightweight demo if needed)
+backend/data/uploaded_video.mp4
+backend/static/tracked_video.mp4
+
+# YOLO cache / temp weights if applicable
+*.pt.cache

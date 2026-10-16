@@ -1,0 +1,34 @@
+{
+    "admin": {
+        "username": "admin",
+        "password": "password",
+        "role": "SUPER ADMIN / OWNER",
+        "name": "Sarah Connor",
+        "title": "Super Admin / Owner",
+        "permissions": ["all"]
+    },
+    "store_manager": {
+        "username": "store_manager",
+        "password": "password",
+        "role": "STORE MANAGER",
+        "name": "Alex Stone",
+        "title": "Store Operations Manager",
+        "permissions": ["dashboard", "video_analysis", "detection", "tracking", "customer_journey", "heatmap", "shelf_analytics", "blind_zone", "recommendations", "reports"]
+    },
+    "marketing_manager": {
+        "username": "marketing_manager",
+        "password": "password",
+        "role": "MARKETING MANAGER",
+        "name": "Sarah Jenkins",
+        "title": "Head of Retail Marketing",
+        "permissions": ["dashboard", "customer_journey", "heatmap", "shelf_analytics", "blind_zone", "recommendations", "reports"]
+    },
+    "operations_manager": {
+        "username": "operations_manager",
+        "password": "password",
+        "role": "OPERATIONS MANAGER",
+        "name": "David Miller",
+        "title": "Store Operations Lead",
+        "permissions": ["dashboard", "video_analysis", "customer_journey", "heatmap", "shelf_analytics", "recommendations", "reports"]
+    }
+}

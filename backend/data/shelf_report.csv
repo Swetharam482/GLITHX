@@ -1,5 +1,6 @@
-shelf_id,customer_count,avg_dwell_time,max_dwell_time,products_viewed,products_purchased,conversion_rate,engagement_score
-Shelf A (Snacks),0,0,0,0,0,0.0,0
-Shelf B (Beverages),0,0,0,0,0,0.0,0
-Shelf C (Produce),0,0,0,0,0,0.0,0
-Shelf D (Bakery),0,0,0,0,0,0.0,0
+shelf_id,customer_count,avg_dwell_time,max_dwell_time,engagement_score
+Shelf A (Groceries & Oils),0,0.0,0.0,0
+Shelf B (Cleaning & Household),0,0.0,0.0,0
+Central Walking Aisle,2,2.8,4.0,18
+Back Endcap,1,6.3,6.3,40
+Front Checkout Approach,0,0.0,0.0,0
